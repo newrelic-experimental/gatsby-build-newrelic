@@ -12,7 +12,7 @@ const _zipkinTransportHttp = require('zipkin-transport-newrelic');
 const _zipkinJavascriptOpentracing = _interopRequireDefault(
   require('zipkin-javascript-opentracing')
 );
-
+const constants = require('./constants');
 const _nodeFetch = _interopRequireDefault(require('node-fetch'));
 let logger;
 let recorder;
@@ -26,7 +26,7 @@ const create = () => {
     // endpoint of local docker zipkin instance
     endpoint: `https://trace-api.newrelic.com/trace/v1`,
     headers: {
-      'Api-Key': process.env.NR_KEY,
+      'Api-Key': constants.NR_KEY,
       'Data-Format': 'zipkin',
       'Data-Format-Version': 2,
     },
@@ -38,8 +38,8 @@ const create = () => {
   });
   // console.log(recorder)
   const tracer = new _zipkinJavascriptOpentracing.default({
-    localServiceName: `gatsbyTest`,
-    serviceName: `gatsbyTest`,
+    localServiceName: constants.SITE_NAME,
+    serviceName: constants.SITE_NAME,
     // Sample 1 out of 1 spans (100%). When tracing production
     // services, it is normal to sample 1 out of 10 requests so that
     // tracing information doesn't impact site performance. But Gatsby
@@ -61,12 +61,19 @@ exports.create = create;
 
 const _processQueue = async () => {
   if (logger.queue.length > 0) {
-    
+    console.log(logger.queue[0]);
     const formattedQueue = logger.queue.map((trace) => {
         const formatTrace = JSON.parse(trace)
         formatTrace.localEndpoint = {}
         formatTrace.localEndpoint.serviceName = formatTrace.annotations[0].endpoint.serviceName
+        formatTrace.gatsbySite = constants.SITE_NAME || 'site'
+        if (formatTrace.binaryAnnotations) {
+          for (let anno of formatTrace.binaryAnnotations) {
+            formatTrace[anno.key] = formatTrace[anno.value]
+          }
+        }
         delete formatTrace['annotations']
+        
         return JSON.stringify(formatTrace)
     })
     // console.log(typeof logger.queue[0])
@@ -93,7 +100,7 @@ const _processQueue = async () => {
       }
     } catch (error) {
       const err = `Error sending Zipkin data ${error}`;
-      // if (logger.errorListenerSet) logger.emit(`error`, new Error(err));
+      if (logger.errorListenerSet) logger.emit(`error`, new Error(err));
       console.error(err);
     }
   }

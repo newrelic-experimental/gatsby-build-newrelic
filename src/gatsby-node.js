@@ -1,20 +1,24 @@
 "use strict";
-require('newrelic');
-const newrelicFormatter = require('@newrelic/winston-enricher');
-const NewrelicWinston = require('newrelic-winston');
-const NewrelicLogs = require('winston-to-newrelic-logs');
-const winston = require('winston');
-const logger = winston.createLogger({
-    transports: [
-        new NewrelicLogs({ licenseKey: process.env.NR_LICENCE, apiUrl: 'https://log-api.newrelic.com' }),
-        new NewrelicWinston(),
-    ],
-    format: winston.format.combine(
-      winston.format.label({serviceName: 'GatsbyWinston'}),
-      newrelicFormatter()
-    )
-});
 
+require('newrelic');
+const constants = require('./constants');
+const newrelicFormatter = require('@newrelic/winston-enricher');
+
+const NewrelicWinston = require('newrelic-winston');
+
+const NewrelicLogs = require('winston-to-newrelic-logs');
+
+const winston = require('winston');
+
+const logger = winston.createLogger({
+  transports: [new NewrelicLogs({
+    licenseKey: process.env.NR_LICENCE,
+    apiUrl: 'https://log-api.newrelic.com'
+  }), new NewrelicWinston()],
+  format: winston.format.combine(winston.format.label({
+    serviceName: 'GatsbyWinston'
+  }), newrelicFormatter())
+});
 
 var _process$env$BENCHMAR;
 
@@ -36,28 +40,36 @@ const {
 
 const fs = require(`fs`);
 
-console.error = function(d) { //
-  logger.error(d, {logee: 'ruairi'});
-};
-console.log = function(d) { //
-  logger.log({
-    level: 'info',
-    message: d
+console.error = function (d) {
+  //
+  logger.error(d, {
+    logee: 'ruairi'
   });
 };
-console.warn = function(d) { //
-  logger.log({
-    level: 'warn',
-    message: d
-  });
-};
-console.info = function(d) { //
-  logger.log({
-    level: 'info',
-    message: d
-  });
-};
-// var capcon = require('capture-console');
+
+// console.log = function (d) {
+//   //
+//   logger.log({
+//     level: 'info',
+//     message: d
+//   });
+// };
+
+// console.warn = function (d) {
+//   //
+//   logger.log({
+//     level: 'warn',
+//     message: d
+//   });
+// };
+
+// console.info = function (d) {
+//   //
+//   logger.log({
+//     level: 'info',
+//     message: d
+//   });
+// }; // var capcon = require('capture-console');
 // let output = ''
 // capcon.startCapture(process.stderr, function (stderr) {
 //   logger.error(stderr);
@@ -67,27 +79,25 @@ console.info = function(d) { //
 //   // the return value is a string containing stderr
 //   console.log
 // });
-
 // // console.log(`HELLLOOOOOO ${stderr}`);
- 
 // var stdout = capcon.captureStdout(function scope() {
 //   // whatever is done in here has stdout captured,
 //   // the return value is a string containing stdout
 // });
- 
 // var stdio = capcon.captureStdio(function scope() {
 //   // whatever is done in here has both stdout and stderr captured,
 //   // the return value is an object with 'stderr' and 'stdout' keys
 // });
-console.log('alone or in pairs,');
-console.warn('and over your neighbors dog?');
-console.info('Whats great for a snack,');
-console.error('And fits on your back?');
-console.error('Its log, log, log');
+
+
+// console.log('alone or in pairs,');
+// console.warn('and over your neighbors dog?');
+// console.info('Whats great for a snack,');
+// console.error('And fits on your back?');
+// console.error('Its log, log, log');
 const bootstrapTime = performance.now();
 const CI_NAME = process.env.CI_NAME;
 const BENCHMARK_REPORTING_URL = "https://metric-api.newrelic.com/metric/v1";
-
 let lastApi; // Current benchmark state, if any. If none then create one on next lifecycle.
 
 let benchMeta;
@@ -153,9 +163,9 @@ class BenchMeta {
     let siteId = ``;
 
     try {
-      var _JSON$parse$siteId, _JSON$parse, _process$env$GATSBY_T, _process$env;
+      var _JSON$parse$siteId, _JSON$parse, _process$env$GATSBY_T, _process$env; // The tags ought to be a json string, but we try/catch it just in case it's not, or not a valid json string
 
-      // The tags ought to be a json string, but we try/catch it just in case it's not, or not a valid json string
+
       siteId = (_JSON$parse$siteId = (_JSON$parse = JSON.parse((_process$env$GATSBY_T = (_process$env = process.env) === null || _process$env === void 0 ? void 0 : _process$env.GATSBY_TELEMETRY_TAGS) !== null && _process$env$GATSBY_T !== void 0 ? _process$env$GATSBY_T : `{}`)) === null || _JSON$parse === void 0 ? void 0 : _JSON$parse.siteId) !== null && _JSON$parse$siteId !== void 0 ? _JSON$parse$siteId : ``; // Set by server
     } catch (e) {
       siteId = `error`;
@@ -192,9 +202,9 @@ class BenchMeta {
   }
 
   getData() {
-    var _process$cwd;
+    var _process$cwd; // Get memory usage snapshot first (just in case)
 
-    // Get memory usage snapshot first (just in case)
+
     const {
       rss,
       heapTotal,
@@ -230,8 +240,6 @@ class BenchMeta {
     const gifCount = execToInt(`find public .cache  -type f -iname "*.gif" | wc -l`);
     const otherCount = execToInt(`find public .cache  -type f -iname "*.bmp" -or -iname "*.tif" -or -iname "*.webp" -or -iname "*.svg" | wc -l`);
     const benchmarkMetadata = this.getMetadata();
-
-
     const attributes = {
       sessionId: process.gatsbyTelemetrySessionId || uuidv4(),
       gitHash,
@@ -243,97 +251,89 @@ class BenchMeta {
       gatsbyCli: gatsbyCliVersion,
       sharp: sharpVersion,
       webpack: webpackVersion,
-      ...benchmarkMetadata,
-    }
-
-    const buildtimes = {
-      ...attributes,
+      ...benchmarkMetadata
+    };
+    const buildtimes = { ...attributes,
       bootstrapTime: this.timestamps.bootstrapTime,
-      instantiationTime: this.timestamps.instantiationTime, // Instantiation time of this class
-      benchmarkStart: this.timestamps.benchmarkStart, // Start of benchmark itself
-      preInit: this.timestamps.preInit, // Gatsby onPreInit life cycle
-      preBootstrap: this.timestamps.preBootstrap, // Gatsby onPreBootstrap life cycle
-      preBuild: this.timestamps.preBuild, // Gatsby onPreBuild life cycle
-      postBuild: this.timestamps.postBuild, // Gatsby onPostBuild life cycle
-      benchmarkEnd: this.timestamps.benchmarkEnd, // End of benchmark itself
-    }
+      instantiationTime: this.timestamps.instantiationTime,
+      // Instantiation time of this class
+      benchmarkStart: this.timestamps.benchmarkStart,
+      // Start of benchmark itself
+      preInit: this.timestamps.preInit,
+      // Gatsby onPreInit life cycle
+      preBootstrap: this.timestamps.preBootstrap,
+      // Gatsby onPreBootstrap life cycle
+      preBuild: this.timestamps.preBuild,
+      // Gatsby onPreBuild life cycle
+      postBuild: this.timestamps.postBuild,
+      // Gatsby onPostBuild life cycle
+      benchmarkEnd: this.timestamps.benchmarkEnd // End of benchmark itself
 
+    };
     var timestamp = Date.now();
-
     const timeelapsed = this.timestamps.benchmarkEnd - this.timestamps.benchmarkStart;
-
-    return [{ 
-      "metrics":[{ 
-         "name":"jsSize", 
-         "type":"gauge", 
-         "value": publicJsSize, 
-         "timestamp": timestamp, 
-         "attributes":attributes 
-         },
-         { 
-          "name":"pngs", 
-          "type":"gauge", 
-          "value": pngCount, 
-          "timestamp": timestamp, 
-          "attributes":attributes 
-          },
-          { 
-            "name":"jpgs", 
-            "type":"gauge", 
-            "value": jpgCount, 
-            "timestamp": timestamp, 
-            "attributes":attributes 
-          },
-          { 
-            "name":"otherImages", 
-            "type":"gauge", 
-            "value": otherCount, 
-            "timestamp": timestamp, 
-            "attributes":attributes 
-          },
-          { 
-            "name":"gifs", 
-            "type":"gauge", 
-            "value": gifCount, 
-            "timestamp": timestamp, 
-            "attributes":attributes 
-          },
-          { 
-            "name":"memory-rss", 
-            "type":"gauge", 
-            "value": rss !== null && rss !== void 0 ? rss : 0, 
-            "timestamp": timestamp, 
-            "attributes":attributes 
-          },
-          { 
-            "name":"memory-heapTotal", 
-            "type":"gauge", 
-            "value": heapTotal !== null && heapTotal !== void 0 ? heapTotal : 0, 
-            "timestamp": timestamp, 
-            "attributes":attributes 
-          },
-          { 
-            "name":"memory-heapUsed", 
-            "type":"gauge", 
-            "value": heapUsed !== null && heapUsed !== void 0 ? heapUsed : 0, 
-            "timestamp": timestamp, 
-            "attributes":attributes 
-          },
-          { 
-            "name":"memory-external", 
-            "type":"gauge", 
-            "value": external !== null && external !== void 0 ? external : 0, 
-            "timestamp": timestamp, 
-            "attributes":attributes 
-          },
-          { 
-            "name":"build-times", 
-            "type":"gauge", 
-            "value": timeelapsed, 
-            "timestamp": timestamp, 
-            "attributes": buildtimes 
-          }
-        ] 
+    return [{
+      "metrics": [{
+        "name": "jsSize",
+        "type": "gauge",
+        "value": publicJsSize,
+        "timestamp": timestamp,
+        "attributes": attributes
+      }, {
+        "name": "pngs",
+        "type": "gauge",
+        "value": pngCount,
+        "timestamp": timestamp,
+        "attributes": attributes
+      }, {
+        "name": "jpgs",
+        "type": "gauge",
+        "value": jpgCount,
+        "timestamp": timestamp,
+        "attributes": attributes
+      }, {
+        "name": "otherImages",
+        "type": "gauge",
+        "value": otherCount,
+        "timestamp": timestamp,
+        "attributes": attributes
+      }, {
+        "name": "gifs",
+        "type": "gauge",
+        "value": gifCount,
+        "timestamp": timestamp,
+        "attributes": attributes
+      }, {
+        "name": "memory-rss",
+        "type": "gauge",
+        "value": rss !== null && rss !== void 0 ? rss : 0,
+        "timestamp": timestamp,
+        "attributes": attributes
+      }, {
+        "name": "memory-heapTotal",
+        "type": "gauge",
+        "value": heapTotal !== null && heapTotal !== void 0 ? heapTotal : 0,
+        "timestamp": timestamp,
+        "attributes": attributes
+      }, {
+        "name": "memory-heapUsed",
+        "type": "gauge",
+        "value": heapUsed !== null && heapUsed !== void 0 ? heapUsed : 0,
+        "timestamp": timestamp,
+        "attributes": attributes
+      }, {
+        "name": "memory-external",
+        "type": "gauge",
+        "value": external !== null && external !== void 0 ? external : 0,
+        "timestamp": timestamp,
+        "attributes": attributes
+      }, {
+        "name": "build-times",
+        "type": "gauge",
+        "value": timeelapsed,
+        "timestamp": timestamp,
+        "attributes": buildtimes
+      }]
     }];
   }
 
@@ -386,7 +386,7 @@ class BenchMeta {
       method: `POST`,
       headers: {
         "content-type": `application/json`,
-        "Api-Key": "NRII-KkwQR2CQ81QCdfxTZOLc7G79RStiqG7R"
+        "Api-Key": constants.NR_KEY
       },
       body: json
     }).then(res => {
