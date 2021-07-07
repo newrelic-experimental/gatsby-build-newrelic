@@ -64,15 +64,19 @@ const _processQueue = async () => {
     console.log(logger.queue[0]);
     const formattedQueue = logger.queue.map((trace) => {
         const formatTrace = JSON.parse(trace)
-        formatTrace.localEndpoint = {}
-        formatTrace.localEndpoint.serviceName = formatTrace.annotations[0].endpoint.serviceName
-        formatTrace.gatsbySite = constants.SITE_NAME || 'site'
-        if (formatTrace.binaryAnnotations) {
-          for (let anno of formatTrace.binaryAnnotations) {
-            formatTrace[anno.key] = formatTrace[anno.value]
+        if (formatTrace.annotations[0].endpoint) {
+          formatTrace.localEndpoint = {}
+          formatTrace.localEndpoint.serviceName = formatTrace.annotations[0].endpoint.serviceName
+          formatTrace.gatsbySite = constants ? constants.SITE_NAME : 'gatsby-site'
+          if (formatTrace.binaryAnnotations) {
+            formatTrace.tags = {}
+            for (let anno of formatTrace.binaryAnnotations) {
+              formatTrace.tags[anno.key] = anno.value
+            }
+            delete formatTrace['binaryAnnotations']
           }
+          delete formatTrace['annotations']
         }
-        delete formatTrace['annotations']
         
         return JSON.stringify(formatTrace)
     })
