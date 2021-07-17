@@ -1,5 +1,5 @@
 'use strict';
-var nr = require('./node_modules/newrelic')
+var nr = require('newrelic')
 
 const _interopRequireDefault = require('@babel/runtime/helpers/interopRequireDefault');
 

@@ -10,6 +10,17 @@
 
 ## Getting Started
 >[Simple steps to start working with the software similar to a "Hello World"]
+Build Command:
+
+```
+NEW_RELIC_HOME='./node_modules/gatsby-plugin-newrelic-test' gatsby build --open-tracing-config-file ./node_modules/gatsby-plugin-newrelic-test/zipkin-local.js --graphql-tracing",
+```
+
+or
+
+```
+export NEW_RELIC_HOME='./node_modules/gatsby-plugin-newrelic-test'
+```
 
 ## Usage
 >[**Optional** - Include more thorough instructions on how to use the software. This section might not be needed if the Getting Started section is enough. Remove this section if it's not needed.]

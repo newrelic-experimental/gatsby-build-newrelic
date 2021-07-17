@@ -1,11 +1,17 @@
 "use strict";
 
 require('newrelic');
-const { cpuCoreCount } = require("gatsby-core-utils")
-process.env.GATSBY_CPU_COUNT = "logical-cores"
 
-const coreCount = cpuCoreCount()
+const fs = require(`fs`);
+
+const {
+  cpuCoreCount
+} = require("gatsby-core-utils");
+
+const coreCount = cpuCoreCount();
+
 const constants = require('./constants');
+
 const newrelicFormatter = require('@newrelic/winston-enricher');
 
 const NewrelicWinston = require('newrelic-winston');
@@ -24,28 +30,26 @@ const logger = winston.createLogger({
   }), newrelicFormatter())
 });
 const originalStdoutWrite = process.stdout.write.bind(process.stdout);
-const UNWANTED_LOGS = ['[2K[1A[2K[G', '', '\n']
-const REPLACE_SUBSTRINGS = ['[34m', '[39m', '[2K[1A[2K[G', '[32m'];
+const brailleRegex = /⠋|⠙|⠹|⠸|⠼|⠴|⠦|⠧|⠇|⠏|\n/g;
+const regex = /[\u001b\u009b][[()#;?]*(?:[0-9]{1,4}(?:;[0-9]{0,4})*)?[0-9A-ORZcf-nqry=><]/g;
 
 process.stdout.write = (chunk, encoding, callback) => {
-  if (typeof chunk === 'string' && !UNWANTED_LOGS.includes(chunk)) {
-    try {
-      REPLACE_SUBSTRINGS.forEach(sub => {
-        chunk.replace(sub, "")
-      });
-    } catch(e) {
-      console.log(e)
-    }
-    
-    try {
-      logger.log({
-        level: 'info',
-        message: chunk
-      });
-    } catch (e) {
-      console.log(e)
-    }
+  let copyChunk = chunk;
 
+  if (typeof copyChunk === 'string') {
+    try {
+      copyChunk = copyChunk.replace(regex, "").replace(brailleRegex, '').trimStart();
+
+      if (copyChunk !== '') {
+        // fs.appendFileSync('links.txt', JSON.stringify({copyChunk}) + '\n');
+        logger.log({
+          level: 'info',
+          message: copyChunk
+        });
+      }
+    } catch (e) {
+      fs.appendFileSync('errors.txt', e + '\n');
+    }
   }
 
   return originalStdoutWrite(chunk, encoding, callback);
@@ -69,20 +73,14 @@ const {
   execSync
 } = require(`child_process`);
 
-const fs = require(`fs`); 
 console.error = function (d) {
-  //
-  logger.error(d, {
-    logee: 'ruairi'
-  });
+  fs.appendFileSync('errors.txt', JSON.stringify({
+    error: d
+  }) + '\n'); // logger.error(d, {
+  //   logee: 'ruairi'
+  // });
 };
-console.log = function (d) {
-  //
-  logger.log({
-    level: 'info',
-    message: d
-  });
-};
+
 console.warn = function (d) {
   //
   logger.log({
@@ -90,14 +88,6 @@ console.warn = function (d) {
     message: d
   });
 };
-console.info = function (d) {
-  //
-  logger.log({
-    level: 'info',
-    message: d
-  });
-}; // var capcon = require('capture-console');
-
 
 const bootstrapTime = performance.now();
 const CI_NAME = process.env.CI_NAME;
@@ -428,7 +418,8 @@ process.on(`exit`, () => {
   if (benchMeta && !benchMeta.flushed && BENCHMARK_REPORTING_URL) {
     // This is probably already a non-zero exit as otherwise node should wait for the last promise to complete
     reportError(`gatsby-plugin-benchmark-reporting error`, new Error(`This is process.exit(); Benchmark plugin has not completely flushed yet`));
-    process.stdout.write = originalStdoutWrite;
+    process.stdout.write = originalStdoutWrite; // process.stderr.write = originalStderrWrite;
+
     process.exit(1);
   }
 });
