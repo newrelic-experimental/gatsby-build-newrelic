@@ -1,6 +1,6 @@
 {
   "name": "gatsby-plugin-newrelic-test",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "[![New Relic Experimental header](https://github.com/newrelic/opensource-website/raw/master/src/images/categories/Experimental.png)](https://opensource.newrelic.com/oss-category/#new-relic-experimental)",
   "main": "index.js",
   "bundleDependencies": false,
@@ -10,7 +10,7 @@
     "fast-glob": "^3.2.5",
     "gatsby-core-utils": "^2.9.0",
     "newrelic": "^7.5.1",
-    "newrelic-winston": "^2.1.0",
+    "newrelic-agent-winston": "^1.0.1",
     "node-fetch": "^2.6.1",
     "s": "^1.0.0",
     "uuid": "3.4.0",
