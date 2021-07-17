@@ -1,6 +1,6 @@
 {
   "name": "gatsby-plugin-newrelic-test",
-  "version": "1.0.6",
+  "version": "1.0.7",
   "description": "[![New Relic Experimental header](https://github.com/newrelic/opensource-website/raw/master/src/images/categories/Experimental.png)](https://opensource.newrelic.com/oss-category/#new-relic-experimental)",
   "main": "index.js",
   "bundleDependencies": false,
@@ -19,7 +19,7 @@
     "zipkin": "^0.22.0",
     "zipkin-javascript-opentracing": "^3.0.0",
     "zipkin-transport-http": "^0.22.0",
-    "zipkin-transport-newrelic": "^0.1.8"
+    "zipkin-transport-newrelic": "^0.1.9"
   },
   "deprecated": false,
   "devDependencies": {
