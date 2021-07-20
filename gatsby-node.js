@@ -8,6 +8,8 @@ const {
   cpuCoreCount
 } = require("gatsby-core-utils");
 
+var ci = require('ci-info');
+
 const coreCount = cpuCoreCount();
 
 const constants = require('./constants');
@@ -32,6 +34,21 @@ const logger = winston.createLogger({
 const originalStdoutWrite = process.stdout.write.bind(process.stdout);
 const brailleRegex = /⠋|⠙|⠹|⠸|⠼|⠴|⠦|⠧|⠇|⠏|\n/g;
 const regex = /[\u001b\u009b][[()#;?]*(?:[0-9]{1,4}(?:;[0-9]{0,4})*)?[0-9A-ORZcf-nqry=><]/g;
+const ALREADY_LOGGED = {
+  'source and transform nodes': false,
+  'building schema': false,
+  'createPages': false,
+  'createPagesStatefully': false,
+  'extract queries from components': false,
+  'write out redirect data': false,
+  'onPostBootstrap': false,
+  'Building production JavaScript and CSS bundles': false,
+  'JavaScript and CSS webpack compilation Building HTML renderer': false,
+  'JavaScript and CSS webpack compilation': false,
+  'Building HTML renderer': false,
+  'warn GATSBY_NEWRELIC_ENV env variable is not set': false,
+  'onPostBuild': false
+};
 
 process.stdout.write = (chunk, encoding, callback) => {
   let copyChunk = chunk;
@@ -40,19 +57,41 @@ process.stdout.write = (chunk, encoding, callback) => {
     try {
       copyChunk = copyChunk.replace(regex, "").replace(brailleRegex, '').trimStart();
 
+      if (Object.keys(ALREADY_LOGGED).includes(copyChunk)) {
+        if (ALREADY_LOGGED[copyChunk]) {
+          return originalStdoutWrite(chunk, encoding, callback);
+        } else {
+          ALREADY_LOGGED[copyChunk] = true;
+        }
+      }
+
       if (copyChunk !== '') {
-        // fs.appendFileSync('links.txt', JSON.stringify({copyChunk}) + '\n');
         logger.log({
           level: 'info',
           message: copyChunk
         });
       }
     } catch (e) {
-      fs.appendFileSync('errors.txt', e + '\n');
+      console.error(e);
     }
   }
 
   return originalStdoutWrite(chunk, encoding, callback);
+};
+
+console.error = function (d) {
+  logger.log({
+    level: 'error',
+    message: d
+  });
+};
+
+console.warn = function (d) {
+  //
+  logger.log({
+    level: 'warn',
+    message: d
+  });
 };
 
 var _process$env$BENCHMAR;
@@ -73,24 +112,8 @@ const {
   execSync
 } = require(`child_process`);
 
-console.error = function (d) {
-  fs.appendFileSync('errors.txt', JSON.stringify({
-    error: d
-  }) + '\n'); // logger.error(d, {
-  //   logee: 'ruairi'
-  // });
-};
-
-console.warn = function (d) {
-  //
-  logger.log({
-    level: 'warn',
-    message: d
-  });
-};
-
 const bootstrapTime = performance.now();
-const CI_NAME = process.env.CI_NAME;
+const CI_NAME = ci.isCI ? ci.name : 'local';
 const BENCHMARK_REPORTING_URL = "https://metric-api.newrelic.com/metric/v1";
 let lastApi; // Current benchmark state, if any. If none then create one on next lifecycle.
 
@@ -213,10 +236,16 @@ class BenchMeta {
     // This won't work as intended when running a site not in our repo (!)
 
 
+    process.platform;
     const gitHash = execToStr(`git rev-parse HEAD`); // Git only supports UTC tz through env var, but the unix time stamp is UTC
 
+    const gitCommit = execToStr(`git log --format="%H" -n 1`);
+    const gitBranch = execToStr(`git branch --show-current`);
+    const gitRepoName = execToStr('basename `git rev-parse --show-toplevel`');
+    const gitRepoUrl = execToStr(`git config --get remote.origin.url`);
     const unixStamp = execToStr(`git show --quiet --date=unix --format="%cd"`);
-    const commitTime = new Date(parseInt(unixStamp, 10) * 1000).toISOString();
+    const gitCommitTimestamp = new Date(parseInt(unixStamp, 10) * 1000).toISOString();
+    const nodeEnv = process.env.NODE_ENV || 'n/a';
     const nodejsVersion = process.version; // This assumes the benchmark is started explicitly from `node_modules/.bin/gatsby`, and not a global install
     // (This is what `gatsby --version` does too, ultimately)
 
@@ -237,9 +266,14 @@ class BenchMeta {
     const attributes = {
       sessionId: process.gatsbyTelemetrySessionId || uuidv4(),
       gitHash,
-      commitTime,
-      ci: process.env.CI || false,
-      ciName: CI_NAME || `local`,
+      gitCommit,
+      gitCommitTimestamp,
+      gitBranch,
+      gitRepoName,
+      gitRepoUrl,
+      ci: ci.isCI,
+      ciName: CI_NAME ? CI_NAME : 'n/a',
+      nodeEnv,
       nodejs: nodejsVersion,
       gatsby: gatsbyVersion,
       gatsbyCli: gatsbyCliVersion,
