@@ -7,7 +7,9 @@ const fs = require(`fs`);
 const {
   cpuCoreCount
 } = require("gatsby-core-utils");
-var ci = require('ci-info')
+
+var ci = require('ci-info');
+
 const coreCount = cpuCoreCount();
 
 const constants = require('./constants');
@@ -29,7 +31,6 @@ const logger = winston.createLogger({
     serviceName: 'GatsbyWinston'
   }), newrelicFormatter())
 });
-
 const originalStdoutWrite = process.stdout.write.bind(process.stdout);
 const brailleRegex = /⠋|⠙|⠹|⠸|⠼|⠴|⠦|⠧|⠇|⠏|\n/g;
 const regex = /[\u001b\u009b][[()#;?]*(?:[0-9]{1,4}(?:;[0-9]{0,4})*)?[0-9A-ORZcf-nqry=><]/g;
@@ -112,7 +113,7 @@ const {
 } = require(`child_process`);
 
 const bootstrapTime = performance.now();
-const CI_NAME = ci.isCI ? ci.name : 'local';
+const CI_NAME = ci.name || 'local';
 const BENCHMARK_REPORTING_URL = "https://metric-api.newrelic.com/metric/v1";
 let lastApi; // Current benchmark state, if any. If none then create one on next lifecycle.
 
@@ -234,16 +235,64 @@ class BenchMeta {
     // And we will want to know what version of the repo we're testing with
     // This won't work as intended when running a site not in our repo (!)
 
-    process.platform
+    let ciAttributes;
+
+    console.log(`[!] If you see issues with any attributes reporting incorrectly, please open an issue in GitHub`)
+    console.log(`[!] CI: ${CI_NAME}`)
+    try {
+      if (process.env.NETLIFY) {
+        ciAttributes = {
+          gitRepoUrl: process.env.REPOSITORY_URL,
+          gitBranch: process.env.BRANCH,
+          gitHead: process.env.HEAD,
+          gitCommit: process.env.COMMIT_REF,
+          gitCachedCommit: process.env.CACHED_COMMIT_REF,
+          gitPullRequest: process.env.PULL_REQUEST,
+          gitReviewId: process.env.REVIEW_ID,
+          buildId: process.env.BUILD_ID,
+          context: process.env.CONTEXT,
+          systemArchitecture: process.env._system_arch,
+          systemVersion: process.env._system_version,
+          url: process.env.URL,
+          deployUrl: process.env.DEPLOY_URL,
+          deployPrimeUrl: process.env.DEPLOY_PRIME_URL,
+          deployId: process.env.DEPLOY_ID,
+          ciSiteName: process.env.SITE_NAME,
+          ciSiteId: process.env.SITE_ID,
+          netlifyImagesCdnDomain: process.env.NETLIFY_IMAGES_CDN_DOMAIN,
+        }
+      } else if (process.env.VERCEL) {
+        ciAttributes = {
+          gitRepoUrl: process.env.GATSBY_VERCEL_GIT_REPO_SLUG,
+          gitBranch: process.env.GATSBY_VERCEL_GIT_COMMIT_REF,
+          gitCommit: process.env.GATSBY_VERCEL_GIT_COMMIT_SHA,
+          context: process.env.GATSBY_VERCEL_ENV,
+          deployUrl: process.env.GATSBY_VERCEL_URL,
+          deployRegion: process.env.GATSBY_VERCEL_REGION,
+        }
+      } else if (process.env.GATSBY_CLOUD) {
+        ciAttributes = {
+          gitRepoUrl: execToStr(`git config --get remote.origin.url`),
+          gitBranch: process.env.BRANCH,
+          gatsbyIsPreview: process.env.GATSBY_IS_PREVIEW,
+          gitCommit: execToStr(`git log --format="%H" -n 1`),
+        }
+      } else {
+        ciAttributes = {
+          gitRepoUrl: execToStr(`git config --get remote.origin.url`),
+          gitCommit: execToStr(`git log --format="%H" -n 1`),
+          gitBranch: execToStr(`git branch --show-current`),
+        }
+      }
+    } catch (error) {
+      
+    }
+    
     const gitHash = execToStr(`git rev-parse HEAD`); // Git only supports UTC tz through env var, but the unix time stamp is UTC
-    const gitCommit = execToStr(`git log --format="%H" -n 1`);
-    const gitBranch = execToStr(`git branch --show-current`);
     const gitRepoName = execToStr('basename `git rev-parse --show-toplevel`');
-    const gitRepoUrl = execToStr(`git config --get remote.origin.url`);
     const unixStamp = execToStr(`git show --quiet --date=unix --format="%cd"`);
     const gitCommitTimestamp = new Date(parseInt(unixStamp, 10) * 1000).toISOString();
     const nodeEnv = process.env.NODE_ENV || 'n/a';
-    
     const nodejsVersion = process.version; // This assumes the benchmark is started explicitly from `node_modules/.bin/gatsby`, and not a global install
     // (This is what `gatsby --version` does too, ultimately)
 
@@ -262,16 +311,14 @@ class BenchMeta {
     const otherCount = execToInt(`find public .cache  -type f -iname "*.bmp" -or -iname "*.tif" -or -iname "*.webp" -or -iname "*.svg" | wc -l`);
     const benchmarkMetadata = this.getMetadata();
     const attributes = {
+      ...ciAttributes,
       sessionId: process.gatsbyTelemetrySessionId || uuidv4(),
       gitHash,
-      gitCommit,
       gitCommitTimestamp,
-      gitBranch,
       gitRepoName,
-      gitRepoUrl,
-      ci: ci.isCI,
-      ciName: CI_NAME ? CI_NAME : 'n/a',
+      ciName: CI_NAME,
       nodeEnv,
+      newRelicSiteName: constants.SITE_NAME,
       nodejs: nodejsVersion,
       gatsby: gatsbyVersion,
       gatsbyCli: gatsbyCliVersion,
@@ -280,7 +327,6 @@ class BenchMeta {
       coreCount: coreCount,
       ...benchmarkMetadata
     };
-    
     const buildtimes = { ...attributes,
       bootstrapTime: this.timestamps.bootstrapTime,
       instantiationTime: this.timestamps.instantiationTime,
