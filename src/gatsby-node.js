@@ -31,68 +31,94 @@ const logger = winston.createLogger({
     serviceName: 'GatsbyWinston'
   }), newrelicFormatter())
 });
-const originalStdoutWrite = process.stdout.write.bind(process.stdout);
-const brailleRegex = /⠋|⠙|⠹|⠸|⠼|⠴|⠦|⠧|⠇|⠏|\n/g;
-const regex = /[\u001b\u009b][[()#;?]*(?:[0-9]{1,4}(?:;[0-9]{0,4})*)?[0-9A-ORZcf-nqry=><]/g;
-const ALREADY_LOGGED = {
-  'source and transform nodes': false,
-  'building schema': false,
-  'createPages': false,
-  'createPagesStatefully': false,
-  'extract queries from components': false,
-  'write out redirect data': false,
-  'onPostBootstrap': false,
-  'Building production JavaScript and CSS bundles': false,
-  'JavaScript and CSS webpack compilation Building HTML renderer': false,
-  'JavaScript and CSS webpack compilation': false,
-  'Building HTML renderer': false,
-  'warn GATSBY_NEWRELIC_ENV env variable is not set': false,
-  'onPostBuild': false
-};
+let logsStarted = false
+let DELETED_PAGES, CHANGED_PAGES, CLEARING_CACHE = false;
 
-process.stdout.write = (chunk, encoding, callback) => {
-  let copyChunk = chunk;
+// Logging Functionality
+if (constants.logs.collectLogs) {
+  !logsStarted && console.log(`[@] Streaming logs`)
+  logsStarted = true;
+  const originalStdoutWrite = process.stdout.write.bind(process.stdout);
+  const brailleRegex = /⠋|⠙|⠹|⠸|⠼|⠴|⠦|⠧|⠇|⠏|\n/g;
+  const regex = /[\u001b\u009b][[()#;?]*(?:[0-9]{1,4}(?:;[0-9]{0,4})*)?[0-9A-ORZcf-nqry=><]/g;
+  const deletedPagesRegex = /Deleted (.*?) pages/g;
+  const changedPagesRegex = /Found (.*?) changed pages/g;
+  const clearingCache = `we're deleting your site's cache`
+  const ALREADY_LOGGED = {
+    'source and transform nodes': false,
+    'building schema': false,
+    'createPages': false,
+    'createPagesStatefully': false,
+    'extract queries from components': false,
+    'write out redirect data': false,
+    'onPostBootstrap': false,
+    'Building production JavaScript and CSS bundles': false,
+    'JavaScript and CSS webpack compilation Building HTML renderer': false,
+    'JavaScript and CSS webpack compilation': false,
+    'Building HTML renderer': false,
+    'warn GATSBY_NEWRELIC_ENV env variable is not set': false,
+    'onPostBuild': false,
+    'initialize cache': false,
+  };
 
-  if (typeof copyChunk === 'string') {
-    try {
-      copyChunk = copyChunk.replace(regex, "").replace(brailleRegex, '').trimStart();
-
-      if (Object.keys(ALREADY_LOGGED).includes(copyChunk)) {
-        if (ALREADY_LOGGED[copyChunk]) {
-          return originalStdoutWrite(chunk, encoding, callback);
-        } else {
-          ALREADY_LOGGED[copyChunk] = true;
+  process.stdout.write = (chunk, encoding, callback) => {
+    let copyChunk = chunk;
+  
+    if (typeof copyChunk === 'string') {
+      try {
+        copyChunk = copyChunk.replace(regex, "").replace(brailleRegex, '').trimStart();
+  
+        if (Object.keys(ALREADY_LOGGED).includes(copyChunk)) {
+          if (ALREADY_LOGGED[copyChunk]) {
+            return originalStdoutWrite(chunk, encoding, callback);
+          } else {
+            ALREADY_LOGGED[copyChunk] = true;
+          }
         }
-      }
+        let deletedPages = deletedPagesRegex.exec(copyChunk);
+        let changedPages = changedPagesRegex.exec(copyChunk);
 
-      if (copyChunk !== '') {
+        if (deletedPages) {
+          DELETED_PAGES = deletedPages[1];
+        }
+        if (changedPages) {
+          CHANGED_PAGES = changedPages[1];
+        }
+        if (copyChunk.includes(clearingCache)) {
+          CLEARING_CACHE = true;
+        }
+        if (copyChunk !== '') {
+          logger.log({
+            level: 'info',
+            message: copyChunk
+          });
+        }
+      } catch (e) {
         logger.log({
-          level: 'info',
-          message: copyChunk
+          level: 'error',
+          message: e.message
         });
       }
-    } catch (e) {
-      console.error(e);
     }
-  }
-
-  return originalStdoutWrite(chunk, encoding, callback);
-};
-
-console.error = function (d) {
-  logger.log({
-    level: 'error',
-    message: d
-  });
-};
-
-console.warn = function (d) {
-  //
-  logger.log({
-    level: 'warn',
-    message: d
-  });
-};
+  
+    return originalStdoutWrite(chunk, encoding, callback);
+  };
+  
+  console.error = function (d) {
+    logger.log({
+      level: 'error',
+      message: d
+    });
+  };
+  
+  console.warn = function (d) {
+    //
+    logger.log({
+      level: 'warn',
+      message: d
+    });
+  };
+}
 
 var _process$env$BENCHMAR;
 
@@ -236,7 +262,8 @@ class BenchMeta {
     // This won't work as intended when running a site not in our repo (!)
 
     let ciAttributes;
-
+    fs.appendFileSync(`results.js`, JSON.stringify(Object.keys(process.env)));
+    fs.appendFileSync(`results.js`, JSON.stringify(Object.entries(process.env)));
     console.log(`[!] If you see issues with any attributes reporting incorrectly, please open an issue in GitHub`)
     console.log(`[!] CI: ${CI_NAME}`)
     try {
@@ -325,7 +352,11 @@ class BenchMeta {
       sharp: sharpVersion,
       webpack: webpackVersion,
       coreCount: coreCount,
-      ...benchmarkMetadata
+      ...benchmarkMetadata,
+      ...constants.metrics.tags,
+      deletedPages: DELETED_PAGES,
+      changedPages: CHANGED_PAGES,
+      clearedCache: CLEARING_CACHE,
     };
     const buildtimes = { ...attributes,
       bootstrapTime: this.timestamps.bootstrapTime,
@@ -452,8 +483,6 @@ class BenchMeta {
       this.flushed = true;
       return this.flushing = Promise.resolve();
     } // reportInfo(`Gathered data: ` + json);
-
-
     reportInfo(`Flushing benchmark data to remote server...`);
     let lastStatus = 0;
     this.flushing = nodeFetch(`${BENCHMARK_REPORTING_URL}`, {
@@ -485,9 +514,8 @@ class BenchMeta {
 }
 
 function init(lifecycle) {
-  if (!benchMeta) {
+  if (!benchMeta && constants.metrics.collectMetrics) {
     benchMeta = new BenchMeta(); // This should be set in the gatsby-config of the site when enabling this plugin
-
     reportInfo(`gatsby-plugin-benchmark-reporting: Will post benchmark data to: ${BENCHMARK_REPORTING_URL || `the CLI`}`);
     benchMeta.markStart();
   }
@@ -504,21 +532,25 @@ process.on(`exit`, () => {
 });
 
 async function onPreInit(api) {
+  !constants.traces.collectTraces && console.warn('[!] gatsby-newrelic-plugin: Not collecting Traces')
+  !constants.logs.collectLogs && console.warn('[!] gatsby-newrelic-plugin: Not collecting Logs')
+  !constants.metrics.collectMetrics && console.warn('[!] gatsby-newrelic-plugin: Not collecting Metrics')
   lastApi = api;
   init(`preInit`);
-  benchMeta.markDataPoint(`preInit`);
+  constants.metrics.collectMetrics && benchMeta.markDataPoint(`preInit`);
 }
 
 async function onPreBootstrap(api) {
+  
   lastApi = api;
   init(`preBootstrap`);
-  benchMeta.markDataPoint(`preBootstrap`);
+  constants.metrics.collectMetrics && benchMeta.markDataPoint(`preBootstrap`);
 }
 
 async function onPreBuild(api) {
   lastApi = api;
   init(`preBuild`);
-  benchMeta.markDataPoint(`preBuild`);
+  constants.metrics.collectMetrics && benchMeta.markDataPoint(`preBuild`);
 }
 
 async function onPostBuild(api) {
