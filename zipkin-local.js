@@ -1,6 +1,6 @@
 'use strict';
 var nr = require('newrelic')
-
+const fs = require('fs');
 const _interopRequireDefault = require('@babel/runtime/helpers/interopRequireDefault');
 
 exports.__esModule = true;
@@ -61,6 +61,10 @@ const create = () => {
 exports.create = create;
 
 const _processQueue = async () => {
+  if (!constants.traces.collectTraces) {
+    return
+  }
+  console.log('[@] Starting Zipkin Tracing')
   if (logger.queue.length > 0) {
     const formattedQueue = logger.queue.map((trace) => {
       const formatTrace = JSON.parse(trace)
@@ -78,7 +82,17 @@ const _processQueue = async () => {
         }
         delete formatTrace['binaryAnnotations']
       }
-      return JSON.stringify(formatTrace)
+      if (formatTrace.name === 'run-api') {
+        formatTrace.name += `: ${formatTrace.tags.api}`
+      }
+      if (formatTrace.name === 'run-plugin') {
+        formatTrace.name += `: ${formatTrace.tags.plugin}`
+      }
+      const {tags} = constants.traces;
+      for (let tag in tags) {
+        formatTrace.tags[tag] = tags[tag]
+      }
+      return JSON.stringify({...formatTrace,...constants.traces.tags})
     })
 
     const postBody = `[${formattedQueue.join(',')}]`
