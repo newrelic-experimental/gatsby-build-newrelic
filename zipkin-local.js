@@ -1,6 +1,5 @@
 'use strict';
 var nr = require('newrelic')
-const fs = require('fs');
 const _interopRequireDefault = require('@babel/runtime/helpers/interopRequireDefault');
 
 exports.__esModule = true;
@@ -64,7 +63,7 @@ const _processQueue = async () => {
   if (!constants.traces.collectTraces) {
     return
   }
-  console.log('[@] Starting Zipkin Tracing')
+  console.log('[@]gatsby-plugin-newrelic: Collecting traces')
   if (logger.queue.length > 0) {
     const formattedQueue = logger.queue.map((trace) => {
       const formatTrace = JSON.parse(trace)
@@ -92,6 +91,7 @@ const _processQueue = async () => {
       for (let tag in tags) {
         formatTrace.tags[tag] = tags[tag]
       }
+      formatTrace.tags.sessionId = constants.sessionId;
       return JSON.stringify({...formatTrace,...constants.traces.tags})
     })
 
@@ -111,13 +111,13 @@ const _processQueue = async () => {
 
       if (response.status !== 202) {
         const err =
-          `Unexpected response while sending Zipkin data, status:` +
+          `gatsby-plugin-newrelic: Unexpected response while sending trace data, status:` +
           `${response.status}, body: ${postBody}`;
         if (logger.errorListenerSet) logger.emit(`error`, new Error(err));
         else console.error(err);
       }
     } catch (error) {
-      const err = `Error sending Zipkin data ${error}`;
+      const err = `gatsby-plugin-newrelic: Error sending trace data ${error}`;
       if (logger.errorListenerSet) logger.emit(`error`, new Error(err));
       console.error(err);
     }

@@ -31,19 +31,20 @@ const logger = winston.createLogger({
     serviceName: 'GatsbyWinston'
   }), newrelicFormatter())
 });
-let logsStarted = false
-let DELETED_PAGES, CHANGED_PAGES, CLEARING_CACHE = false;
+let logsStarted = false;
+let DELETED_PAGES,
+    CHANGED_PAGES,
+    CLEARING_CACHE = false; // Logging Functionality
 
-// Logging Functionality
 if (constants.logs.collectLogs) {
-  !logsStarted && console.log(`[@] Streaming logs`)
+  !logsStarted && console.log(`[@] Streaming logs`);
   logsStarted = true;
   const originalStdoutWrite = process.stdout.write.bind(process.stdout);
   const brailleRegex = /⠋|⠙|⠹|⠸|⠼|⠴|⠦|⠧|⠇|⠏|\n/g;
   const regex = /[\u001b\u009b][[()#;?]*(?:[0-9]{1,4}(?:;[0-9]{0,4})*)?[0-9A-ORZcf-nqry=><]/g;
   const deletedPagesRegex = /Deleted (.*?) pages/g;
   const changedPagesRegex = /Found (.*?) changed pages/g;
-  const clearingCache = `we're deleting your site's cache`
+  const clearingCache = `we're deleting your site's cache`;
   const ALREADY_LOGGED = {
     'source and transform nodes': false,
     'building schema': false,
@@ -58,16 +59,16 @@ if (constants.logs.collectLogs) {
     'Building HTML renderer': false,
     'warn GATSBY_NEWRELIC_ENV env variable is not set': false,
     'onPostBuild': false,
-    'initialize cache': false,
+    'initialize cache': false
   };
 
   process.stdout.write = (chunk, encoding, callback) => {
     let copyChunk = chunk;
-  
+
     if (typeof copyChunk === 'string') {
       try {
         copyChunk = copyChunk.replace(regex, "").replace(brailleRegex, '').trimStart();
-  
+
         if (Object.keys(ALREADY_LOGGED).includes(copyChunk)) {
           if (ALREADY_LOGGED[copyChunk]) {
             return originalStdoutWrite(chunk, encoding, callback);
@@ -75,18 +76,22 @@ if (constants.logs.collectLogs) {
             ALREADY_LOGGED[copyChunk] = true;
           }
         }
+
         let deletedPages = deletedPagesRegex.exec(copyChunk);
         let changedPages = changedPagesRegex.exec(copyChunk);
 
         if (deletedPages) {
           DELETED_PAGES = deletedPages[1];
         }
+
         if (changedPages) {
           CHANGED_PAGES = changedPages[1];
         }
+
         if (copyChunk.includes(clearingCache)) {
           CLEARING_CACHE = true;
         }
+
         if (copyChunk !== '') {
           logger.log({
             level: 'info',
@@ -100,17 +105,17 @@ if (constants.logs.collectLogs) {
         });
       }
     }
-  
+
     return originalStdoutWrite(chunk, encoding, callback);
   };
-  
+
   console.error = function (d) {
     logger.log({
       level: 'error',
       message: d
     });
   };
-  
+
   console.warn = function (d) {
     //
     logger.log({
@@ -131,8 +136,6 @@ const {
 } = require(`fast-glob`);
 
 const nodeFetch = require(`node-fetch`);
-
-const uuidv4 = require(`uuid/v4`);
 
 const {
   execSync
@@ -212,7 +215,7 @@ class BenchMeta {
       siteId = (_JSON$parse$siteId = (_JSON$parse = JSON.parse((_process$env$GATSBY_T = (_process$env = process.env) === null || _process$env === void 0 ? void 0 : _process$env.GATSBY_TELEMETRY_TAGS) !== null && _process$env$GATSBY_T !== void 0 ? _process$env$GATSBY_T : `{}`)) === null || _JSON$parse === void 0 ? void 0 : _JSON$parse.siteId) !== null && _JSON$parse$siteId !== void 0 ? _JSON$parse$siteId : ``; // Set by server
     } catch (e) {
       siteId = `error`;
-      reportInfo(`Suppressed an error trying to JSON.parse(GATSBY_TELEMETRY_TAGS): ${e}`);
+      reportInfo(`gatsby-plugin-newrelic: Suppressed an error trying to JSON.parse(GATSBY_TELEMETRY_TAGS): ${e}`);
     }
     /**
      * If we are running in netlify, environment variables can be attached using the INCOMING_HOOK_BODY
@@ -229,7 +232,7 @@ class BenchMeta {
         const incomingHookBody = JSON.parse(incomingHookBodyEnv);
         buildType = incomingHookBody && incomingHookBody.buildType;
       } catch (e) {
-        reportInfo(`Suppressed an error trying to JSON.parse(INCOMING_HOOK_BODY): ${e}`);
+        reportInfo(`gatsby-plugin-newrelic: Suppressed an error trying to JSON.parse(INCOMING_HOOK_BODY): ${e}`);
       }
     }
 
@@ -261,11 +264,11 @@ class BenchMeta {
     // And we will want to know what version of the repo we're testing with
     // This won't work as intended when running a site not in our repo (!)
 
+
     let ciAttributes;
-    fs.appendFileSync(`results.js`, JSON.stringify(Object.keys(process.env)));
-    fs.appendFileSync(`results.js`, JSON.stringify(Object.entries(process.env)));
-    console.log(`[!] If you see issues with any attributes reporting incorrectly, please open an issue in GitHub`)
-    console.log(`[!] CI: ${CI_NAME}`)
+    console.log(`[!] If you see issues with any attributes reporting incorrectly, please open an issue in GitHub`);
+    console.log(`[!] CI: ${CI_NAME}`);
+
     try {
       if (process.env.NETLIFY) {
         ciAttributes = {
@@ -286,8 +289,8 @@ class BenchMeta {
           deployId: process.env.DEPLOY_ID,
           ciSiteName: process.env.SITE_NAME,
           ciSiteId: process.env.SITE_ID,
-          netlifyImagesCdnDomain: process.env.NETLIFY_IMAGES_CDN_DOMAIN,
-        }
+          netlifyImagesCdnDomain: process.env.NETLIFY_IMAGES_CDN_DOMAIN
+        };
       } else if (process.env.VERCEL) {
         ciAttributes = {
           gitRepoUrl: process.env.GATSBY_VERCEL_GIT_REPO_SLUG,
@@ -295,27 +298,26 @@ class BenchMeta {
           gitCommit: process.env.GATSBY_VERCEL_GIT_COMMIT_SHA,
           context: process.env.GATSBY_VERCEL_ENV,
           deployUrl: process.env.GATSBY_VERCEL_URL,
-          deployRegion: process.env.GATSBY_VERCEL_REGION,
-        }
+          deployRegion: process.env.GATSBY_VERCEL_REGION
+        };
       } else if (process.env.GATSBY_CLOUD) {
         ciAttributes = {
           gitRepoUrl: execToStr(`git config --get remote.origin.url`),
           gitBranch: process.env.BRANCH,
           gatsbyIsPreview: process.env.GATSBY_IS_PREVIEW,
-          gitCommit: execToStr(`git log --format="%H" -n 1`),
-        }
+          gitCommit: execToStr(`git log --format="%H" -n 1`)
+        };
       } else {
         ciAttributes = {
           gitRepoUrl: execToStr(`git config --get remote.origin.url`),
           gitCommit: execToStr(`git log --format="%H" -n 1`),
-          gitBranch: execToStr(`git branch --show-current`),
-        }
+          gitBranch: execToStr(`git branch --show-current`)
+        };
       }
-    } catch (error) {
-      
-    }
-    
+    } catch (error) {}
+
     const gitHash = execToStr(`git rev-parse HEAD`); // Git only supports UTC tz through env var, but the unix time stamp is UTC
+
     const gitRepoName = execToStr('basename `git rev-parse --show-toplevel`');
     const unixStamp = execToStr(`git show --quiet --date=unix --format="%cd"`);
     const gitCommitTimestamp = new Date(parseInt(unixStamp, 10) * 1000).toISOString();
@@ -337,9 +339,8 @@ class BenchMeta {
     const gifCount = execToInt(`find public .cache  -type f -iname "*.gif" | wc -l`);
     const otherCount = execToInt(`find public .cache  -type f -iname "*.bmp" -or -iname "*.tif" -or -iname "*.webp" -or -iname "*.svg" | wc -l`);
     const benchmarkMetadata = this.getMetadata();
-    const attributes = {
-      ...ciAttributes,
-      sessionId: process.gatsbyTelemetrySessionId || uuidv4(),
+    const attributes = { ...ciAttributes,
+      sessionId: constants.sessionId,
       gitHash,
       gitCommitTimestamp,
       gitRepoName,
@@ -356,7 +357,7 @@ class BenchMeta {
       ...constants.metrics.tags,
       deletedPages: DELETED_PAGES,
       changedPages: CHANGED_PAGES,
-      clearedCache: CLEARING_CACHE,
+      clearedCache: CLEARING_CACHE
     };
     const buildtimes = { ...attributes,
       bootstrapTime: this.timestamps.bootstrapTime,
@@ -444,7 +445,7 @@ class BenchMeta {
 
   markStart() {
     if (this.started) {
-      reportError(`gatsby-plugin-benchmark-reporting: `, new Error(`Error: Should not call markStart() more than once`));
+      reportError(`gatsby-plugin-newrelic: `, new Error(`Error: Should not call markStart() more than once`));
       process.exit(1);
     }
 
@@ -455,7 +456,7 @@ class BenchMeta {
   markDataPoint(name) {
     if (BENCHMARK_REPORTING_URL) {
       if (!(name in this.timestamps)) {
-        reportError(`Attempted to record a timestamp with a name (\`${name}\`) that wasn't expected`);
+        reportError(`gatsby-plugin-newrelic: Attempted to record a timestamp with a name (\`${name}\`) that wasn't expected`);
         process.exit(1);
       }
     }
@@ -465,7 +466,7 @@ class BenchMeta {
 
   async markEnd() {
     if (!this.timestamps.benchmarkStart) {
-      reportError(`gatsby-plugin-benchmark-reporting:`, new Error(`Error: Should not call markEnd() before calling markStart()`));
+      reportError(`gatsby-plugin-newrelic:`, new Error(`Error: Should not call markEnd() before calling markStart()`));
       process.exit(1);
     }
 
@@ -479,10 +480,12 @@ class BenchMeta {
 
     if (!BENCHMARK_REPORTING_URL) {
       // reportInfo(`Gathered data: ` + json);
-      reportInfo(`BENCHMARK_REPORTING_URL not set, not submitting data`);
+      reportInfo(`gatsby-plugin-newrelic: MetricAPI BENCHMARK_REPORTING_URL not set, not submitting data`);
       this.flushed = true;
       return this.flushing = Promise.resolve();
     } // reportInfo(`Gathered data: ` + json);
+
+
     reportInfo(`Flushing benchmark data to remote server...`);
     let lastStatus = 0;
     this.flushing = nodeFetch(`${BENCHMARK_REPORTING_URL}`, {
@@ -496,9 +499,9 @@ class BenchMeta {
       lastStatus = res.status;
 
       if ([401, 500].includes(lastStatus)) {
-        reportInfo(`Got ${lastStatus} response, waiting for text`);
+        reportInfo(`gatsby-plugin-newrelic: MetricAPI got ${lastStatus} response, waiting for text`);
         res.text().then(content => {
-          reportError(`Response error`, new Error(`Server responded with a ${lastStatus} error: ${content}`));
+          reportError(`Response error`, new Error(`gatsby-plugin-newrelic: MetricAPI responded with a ${lastStatus} error: ${content}`));
           process.exit(1);
         });
       }
@@ -507,7 +510,7 @@ class BenchMeta {
 
       return res.text();
     });
-    this.flushing.then(text => reportInfo(`Server response: ${lastStatus}: ${text}`));
+    this.flushing.then(text => reportInfo(`gatsby-plugin-newrelic: MetricAPI response: ${lastStatus}: ${text}`));
     return this.flushing;
   }
 
@@ -516,7 +519,8 @@ class BenchMeta {
 function init(lifecycle) {
   if (!benchMeta && constants.metrics.collectMetrics) {
     benchMeta = new BenchMeta(); // This should be set in the gatsby-config of the site when enabling this plugin
-    reportInfo(`gatsby-plugin-benchmark-reporting: Will post benchmark data to: ${BENCHMARK_REPORTING_URL || `the CLI`}`);
+
+    reportInfo(`gatsby-plugin-newrelic: Will post benchmark data to: ${BENCHMARK_REPORTING_URL || `the CLI`}`);
     benchMeta.markStart();
   }
 }
@@ -524,7 +528,7 @@ function init(lifecycle) {
 process.on(`exit`, () => {
   if (benchMeta && !benchMeta.flushed && BENCHMARK_REPORTING_URL) {
     // This is probably already a non-zero exit as otherwise node should wait for the last promise to complete
-    reportError(`gatsby-plugin-benchmark-reporting error`, new Error(`This is process.exit(); Benchmark plugin has not completely flushed yet`));
+    reportError(`gatsby-plugin-newrelic: error`, new Error(`This is process.exit(); gatsby-plugin-newrelic: MetricAPI collector has not completely flushed yet`));
     process.stdout.write = originalStdoutWrite; // process.stderr.write = originalStderrWrite;
 
     process.exit(1);
@@ -532,16 +536,15 @@ process.on(`exit`, () => {
 });
 
 async function onPreInit(api) {
-  !constants.traces.collectTraces && console.warn('[!] gatsby-newrelic-plugin: Not collecting Traces')
-  !constants.logs.collectLogs && console.warn('[!] gatsby-newrelic-plugin: Not collecting Logs')
-  !constants.metrics.collectMetrics && console.warn('[!] gatsby-newrelic-plugin: Not collecting Metrics')
+  !constants.traces.collectTraces && console.warn('[!] gatsby-newrelic-plugin: Not collecting Traces');
+  !constants.logs.collectLogs && console.warn('[!] gatsby-newrelic-plugin: Not collecting Logs');
+  !constants.metrics.collectMetrics && console.warn('[!] gatsby-newrelic-plugin: Not collecting Metrics');
   lastApi = api;
   init(`preInit`);
   constants.metrics.collectMetrics && benchMeta.markDataPoint(`preInit`);
 }
 
 async function onPreBootstrap(api) {
-  
   lastApi = api;
   init(`preBootstrap`);
   constants.metrics.collectMetrics && benchMeta.markDataPoint(`preBootstrap`);

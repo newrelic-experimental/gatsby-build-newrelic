@@ -137,8 +137,6 @@ const {
 
 const nodeFetch = require(`node-fetch`);
 
-const uuidv4 = require(`uuid/v4`);
-
 const {
   execSync
 } = require(`child_process`);
@@ -217,7 +215,7 @@ class BenchMeta {
       siteId = (_JSON$parse$siteId = (_JSON$parse = JSON.parse((_process$env$GATSBY_T = (_process$env = process.env) === null || _process$env === void 0 ? void 0 : _process$env.GATSBY_TELEMETRY_TAGS) !== null && _process$env$GATSBY_T !== void 0 ? _process$env$GATSBY_T : `{}`)) === null || _JSON$parse === void 0 ? void 0 : _JSON$parse.siteId) !== null && _JSON$parse$siteId !== void 0 ? _JSON$parse$siteId : ``; // Set by server
     } catch (e) {
       siteId = `error`;
-      reportInfo(`Suppressed an error trying to JSON.parse(GATSBY_TELEMETRY_TAGS): ${e}`);
+      reportInfo(`gatsby-plugin-newrelic: Suppressed an error trying to JSON.parse(GATSBY_TELEMETRY_TAGS): ${e}`);
     }
     /**
      * If we are running in netlify, environment variables can be attached using the INCOMING_HOOK_BODY
@@ -234,7 +232,7 @@ class BenchMeta {
         const incomingHookBody = JSON.parse(incomingHookBodyEnv);
         buildType = incomingHookBody && incomingHookBody.buildType;
       } catch (e) {
-        reportInfo(`Suppressed an error trying to JSON.parse(INCOMING_HOOK_BODY): ${e}`);
+        reportInfo(`gatsby-plugin-newrelic: Suppressed an error trying to JSON.parse(INCOMING_HOOK_BODY): ${e}`);
       }
     }
 
@@ -268,8 +266,6 @@ class BenchMeta {
 
 
     let ciAttributes;
-    fs.appendFileSync(`results.js`, JSON.stringify(Object.keys(process.env)));
-    fs.appendFileSync(`results.js`, JSON.stringify(Object.entries(process.env)));
     console.log(`[!] If you see issues with any attributes reporting incorrectly, please open an issue in GitHub`);
     console.log(`[!] CI: ${CI_NAME}`);
 
@@ -344,7 +340,7 @@ class BenchMeta {
     const otherCount = execToInt(`find public .cache  -type f -iname "*.bmp" -or -iname "*.tif" -or -iname "*.webp" -or -iname "*.svg" | wc -l`);
     const benchmarkMetadata = this.getMetadata();
     const attributes = { ...ciAttributes,
-      sessionId: process.gatsbyTelemetrySessionId || uuidv4(),
+      sessionId: constants.sessionId,
       gitHash,
       gitCommitTimestamp,
       gitRepoName,
@@ -449,7 +445,7 @@ class BenchMeta {
 
   markStart() {
     if (this.started) {
-      reportError(`gatsby-plugin-benchmark-reporting: `, new Error(`Error: Should not call markStart() more than once`));
+      reportError(`gatsby-plugin-newrelic: `, new Error(`Error: Should not call markStart() more than once`));
       process.exit(1);
     }
 
@@ -460,7 +456,7 @@ class BenchMeta {
   markDataPoint(name) {
     if (BENCHMARK_REPORTING_URL) {
       if (!(name in this.timestamps)) {
-        reportError(`Attempted to record a timestamp with a name (\`${name}\`) that wasn't expected`);
+        reportError(`gatsby-plugin-newrelic: Attempted to record a timestamp with a name (\`${name}\`) that wasn't expected`);
         process.exit(1);
       }
     }
@@ -470,7 +466,7 @@ class BenchMeta {
 
   async markEnd() {
     if (!this.timestamps.benchmarkStart) {
-      reportError(`gatsby-plugin-benchmark-reporting:`, new Error(`Error: Should not call markEnd() before calling markStart()`));
+      reportError(`gatsby-plugin-newrelic:`, new Error(`Error: Should not call markEnd() before calling markStart()`));
       process.exit(1);
     }
 
@@ -484,7 +480,7 @@ class BenchMeta {
 
     if (!BENCHMARK_REPORTING_URL) {
       // reportInfo(`Gathered data: ` + json);
-      reportInfo(`BENCHMARK_REPORTING_URL not set, not submitting data`);
+      reportInfo(`gatsby-plugin-newrelic: MetricAPI BENCHMARK_REPORTING_URL not set, not submitting data`);
       this.flushed = true;
       return this.flushing = Promise.resolve();
     } // reportInfo(`Gathered data: ` + json);
@@ -503,9 +499,9 @@ class BenchMeta {
       lastStatus = res.status;
 
       if ([401, 500].includes(lastStatus)) {
-        reportInfo(`Got ${lastStatus} response, waiting for text`);
+        reportInfo(`gatsby-plugin-newrelic: MetricAPI got ${lastStatus} response, waiting for text`);
         res.text().then(content => {
-          reportError(`Response error`, new Error(`Server responded with a ${lastStatus} error: ${content}`));
+          reportError(`Response error`, new Error(`gatsby-plugin-newrelic: MetricAPI responded with a ${lastStatus} error: ${content}`));
           process.exit(1);
         });
       }
@@ -514,7 +510,7 @@ class BenchMeta {
 
       return res.text();
     });
-    this.flushing.then(text => reportInfo(`Server response: ${lastStatus}: ${text}`));
+    this.flushing.then(text => reportInfo(`gatsby-plugin-newrelic: MetricAPI response: ${lastStatus}: ${text}`));
     return this.flushing;
   }
 
@@ -524,7 +520,7 @@ function init(lifecycle) {
   if (!benchMeta && constants.metrics.collectMetrics) {
     benchMeta = new BenchMeta(); // This should be set in the gatsby-config of the site when enabling this plugin
 
-    reportInfo(`gatsby-plugin-benchmark-reporting: Will post benchmark data to: ${BENCHMARK_REPORTING_URL || `the CLI`}`);
+    reportInfo(`gatsby-plugin-newrelic: Will post benchmark data to: ${BENCHMARK_REPORTING_URL || `the CLI`}`);
     benchMeta.markStart();
   }
 }
@@ -532,7 +528,7 @@ function init(lifecycle) {
 process.on(`exit`, () => {
   if (benchMeta && !benchMeta.flushed && BENCHMARK_REPORTING_URL) {
     // This is probably already a non-zero exit as otherwise node should wait for the last promise to complete
-    reportError(`gatsby-plugin-benchmark-reporting error`, new Error(`This is process.exit(); Benchmark plugin has not completely flushed yet`));
+    reportError(`gatsby-plugin-newrelic: error`, new Error(`This is process.exit(); gatsby-plugin-newrelic: MetricAPI collector has not completely flushed yet`));
     process.stdout.write = originalStdoutWrite; // process.stderr.write = originalStderrWrite;
 
     process.exit(1);
