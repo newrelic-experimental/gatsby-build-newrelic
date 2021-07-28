@@ -1,9 +1,10 @@
 "use strict";
 
 require('newrelic');
+const pluginOptions = require(`../../gatsby-config`)
 
 const fs = require(`fs`);
-
+// fs.appendFileSync('cute2.txt', JSON.stringify() + `\n`)
 const {
   cpuCoreCount
 } = require("gatsby-core-utils");
@@ -13,7 +14,9 @@ var ci = require('ci-info');
 const coreCount = cpuCoreCount();
 
 const constants = require('./constants');
-
+let THEME_OPTIONS = pluginOptions.plugins.filter(plugin => plugin.resolve === 'gatsby-plugin-newrelic-test')[0].options;
+THEME_OPTIONS.buildId = constants.buildId;
+// # sourceMappingURL=zipkin-local.js.map
 const newrelicFormatter = require('@newrelic/winston-enricher');
 
 const NewrelicWinston = require('newrelic-agent-winston');
@@ -22,10 +25,11 @@ const NewrelicLogs = require('winston-to-newrelic-logs');
 
 const winston = require('winston');
 
-const logger = winston.createLogger({
+const winstonLogger = winston.createLogger({
   transports: [new NewrelicLogs({
-    licenseKey: constants.NR_LICENSE,
-    apiUrl: 'https://log-api.newrelic.com'
+    licenseKey: THEME_OPTIONS.NR_LICENSE,
+    apiUrl: 'https://staging-log-api.newrelic.com',
+    pluginOptions: THEME_OPTIONS,
   }), new NewrelicWinston()],
   format: winston.format.combine(winston.format.label({
     serviceName: 'GatsbyWinston'
@@ -36,8 +40,8 @@ let DELETED_PAGES,
     CHANGED_PAGES,
     CLEARING_CACHE = false; // Logging Functionality
 
-if (constants.logs.collectLogs) {
-  !logsStarted && console.log(`[@] Streaming logs`);
+if (THEME_OPTIONS.logs.collectLogs) {
+  !logsStarted && console.log(`[@] gatsby-plugin-newrelic: Streaming logs`);
   logsStarted = true;
   const originalStdoutWrite = process.stdout.write.bind(process.stdout);
   const brailleRegex = /⠋|⠙|⠹|⠸|⠼|⠴|⠦|⠧|⠇|⠏|\n/g;
@@ -93,15 +97,15 @@ if (constants.logs.collectLogs) {
         }
 
         if (copyChunk !== '') {
-          logger.log({
+          winstonLogger.log({
             level: 'info',
-            message: copyChunk
+            message: copyChunk,
           });
         }
       } catch (e) {
-        logger.log({
+        winstonLogger.log({
           level: 'error',
-          message: e.message
+          message: e.message,
         });
       }
     }
@@ -110,17 +114,17 @@ if (constants.logs.collectLogs) {
   };
 
   console.error = function (d) {
-    logger.log({
+    winstonLogger.log({
       level: 'error',
-      message: d
+      message: d,
     });
   };
 
   console.warn = function (d) {
     //
-    logger.log({
+    winstonLogger.log({
       level: 'warn',
-      message: d
+      message: d,
     });
   };
 }
@@ -143,7 +147,7 @@ const {
 
 const bootstrapTime = performance.now();
 const CI_NAME = ci.name || 'local';
-const BENCHMARK_REPORTING_URL = "https://metric-api.newrelic.com/metric/v1";
+const BENCHMARK_REPORTING_URL = "https://staging-metric-api.newrelic.com/metric/v1";
 let lastApi; // Current benchmark state, if any. If none then create one on next lifecycle.
 
 let benchMeta;
@@ -237,13 +241,13 @@ class BenchMeta {
     }
 
     return {
-      buildId: process.env.BENCHMARK_BUILD_ID,
+      buildId: THEME_OPTIONS.buildId,
       branch: process.env.BENCHMARK_BRANCH,
       siteId,
       contentSource: process.env.BENCHMARK_CONTENT_SOURCE,
       siteType: process.env.BENCHMARK_SITE_TYPE,
       repoName: process.env.BENCHMARK_REPO_NAME,
-      buildType: buildType
+      buildType,
     };
   }
 
@@ -332,21 +336,22 @@ class BenchMeta {
     const sharpVersion = fs.existsSync(`node_modules/sharp/package.json`) ? require(`sharp/package.json`).version : `none`;
 
     const webpackVersion = require(`webpack/package.json`).version;
-
+    fs.appendFileSync('cute4.txt', THEME_OPTIONS.buildId)
     const publicJsSize = glob(`public/*.js`).reduce((t, file) => t + fs.statSync(file).size, 0);
     const jpgCount = execToInt(`find public .cache  -type f -iname "*.jpg" -or -iname "*.jpeg" | wc -l`);
     const pngCount = execToInt(`find public .cache  -type f -iname "*.png" | wc -l`);
     const gifCount = execToInt(`find public .cache  -type f -iname "*.gif" | wc -l`);
     const otherCount = execToInt(`find public .cache  -type f -iname "*.bmp" -or -iname "*.tif" -or -iname "*.webp" -or -iname "*.svg" | wc -l`);
     const benchmarkMetadata = this.getMetadata();
-    const attributes = { ...ciAttributes,
-      sessionId: constants.sessionId,
+    const attributes = { 
+      ...ciAttributes,
+      gatsbySite: THEME_OPTIONS.SITE_NAME,
       gitHash,
       gitCommitTimestamp,
       gitRepoName,
       ciName: CI_NAME,
       nodeEnv,
-      newRelicSiteName: constants.SITE_NAME,
+      newRelicSiteName: THEME_OPTIONS.SITE_NAME,
       nodejs: nodejsVersion,
       gatsby: gatsbyVersion,
       gatsbyCli: gatsbyCliVersion,
@@ -354,7 +359,7 @@ class BenchMeta {
       webpack: webpackVersion,
       coreCount: coreCount,
       ...benchmarkMetadata,
-      ...constants.metrics.tags,
+      ...THEME_OPTIONS.metrics.tags,
       deletedPages: DELETED_PAGES,
       changedPages: CHANGED_PAGES,
       clearedCache: CLEARING_CACHE
@@ -492,7 +497,7 @@ class BenchMeta {
       method: `POST`,
       headers: {
         "content-type": `application/json`,
-        "Api-Key": constants.NR_KEY
+        "Api-Key": THEME_OPTIONS.NR_KEY
       },
       body: json
     }).then(res => {
@@ -517,7 +522,7 @@ class BenchMeta {
 }
 
 function init(lifecycle) {
-  if (!benchMeta && constants.metrics.collectMetrics) {
+  if (!benchMeta && THEME_OPTIONS.metrics.collectMetrics) {
     benchMeta = new BenchMeta(); // This should be set in the gatsby-config of the site when enabling this plugin
 
     reportInfo(`gatsby-plugin-newrelic: Will post benchmark data to: ${BENCHMARK_REPORTING_URL || `the CLI`}`);
@@ -535,25 +540,26 @@ process.on(`exit`, () => {
   }
 });
 
-async function onPreInit(api) {
-  !constants.traces.collectTraces && console.warn('[!] gatsby-newrelic-plugin: Not collecting Traces');
-  !constants.logs.collectLogs && console.warn('[!] gatsby-newrelic-plugin: Not collecting Logs');
-  !constants.metrics.collectMetrics && console.warn('[!] gatsby-newrelic-plugin: Not collecting Metrics');
+async function onPreInit(api, themeOptions) {
+  THEME_OPTIONS = themeOptions
+  !themeOptions.traces.collectTraces && reportInfo('[!] gatsby-newrelic-plugin: Not collecting Traces');
+  !themeOptions.logs.collectLogs && reportInfo('[!] gatsby-newrelic-plugin: Not collecting Logs');
+  !themeOptions.metrics.collectMetrics && reportInfo('[!] gatsby-newrelic-plugin: Not collecting Metrics');
   lastApi = api;
   init(`preInit`);
-  constants.metrics.collectMetrics && benchMeta.markDataPoint(`preInit`);
+  THEME_OPTIONS.metrics.collectMetrics && benchMeta.markDataPoint(`preInit`);
 }
 
 async function onPreBootstrap(api) {
   lastApi = api;
   init(`preBootstrap`);
-  constants.metrics.collectMetrics && benchMeta.markDataPoint(`preBootstrap`);
+  THEME_OPTIONS.metrics.collectMetrics && benchMeta.markDataPoint(`preBootstrap`);
 }
 
 async function onPreBuild(api) {
   lastApi = api;
   init(`preBuild`);
-  constants.metrics.collectMetrics && benchMeta.markDataPoint(`preBuild`);
+  THEME_OPTIONS.metrics.collectMetrics && benchMeta.markDataPoint(`preBuild`);
 }
 
 async function onPostBuild(api) {

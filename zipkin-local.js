@@ -1,7 +1,9 @@
 'use strict';
-var nr = require('newrelic')
 const _interopRequireDefault = require('@babel/runtime/helpers/interopRequireDefault');
-
+const pluginOptions = require(`../../gatsby-config`)
+const constants = require('./constants');
+let THEME_OPTIONS = pluginOptions.plugins.filter(plugin => plugin.resolve === 'gatsby-plugin-newrelic-test')[0].options;
+THEME_OPTIONS.buildId = constants.buildId;
 exports.__esModule = true;
 exports.stop = exports.create = void 0;
 
@@ -12,7 +14,6 @@ const _zipkinTransportHttp = require('zipkin-transport-newrelic');
 const _zipkinJavascriptOpentracing = _interopRequireDefault(
   require('zipkin-javascript-opentracing')
 );
-const constants = require('./constants');
 const _nodeFetch = _interopRequireDefault(require('node-fetch'));
 let logger;
 let recorder;
@@ -24,11 +25,13 @@ let recorder;
 const create = () => {
   logger = new _zipkinTransportHttp.HttpLogger({
     // endpoint of local docker zipkin instance
-    endpoint: `https://trace-api.newrelic.com/trace/v1`,
+    endpoint: `https://staging-trace-api.newrelic.com/trace/v1`,
     headers: {
-      'Api-Key': constants.NR_KEY,
+      'Api-Key': THEME_OPTIONS.NR_KEY,
       'Data-Format': 'zipkin',
       'Data-Format-Version': 2,
+      'options': THEME_OPTIONS,
+      'tags': THEME_OPTIONS.traces.tags,
     },
   });
   recorder = new _zipkin.BatchRecorder({
@@ -38,39 +41,25 @@ const create = () => {
   });
   // console.log(recorder)
   const tracer = new _zipkinJavascriptOpentracing.default({
-    localServiceName: constants.SITE_NAME,
-    serviceName: constants.SITE_NAME,
-    // Sample 1 out of 1 spans (100%). When tracing production
-    // services, it is normal to sample 1 out of 10 requests so that
-    // tracing information doesn't impact site performance. But Gatsby
-    // is a build tool and only has "1" request (the
-    // build). Therefore, we must set this to 100% so that spans
-    // aren't missing
+    localServiceName: THEME_OPTIONS.SITE_NAME,
+    serviceName: THEME_OPTIONS.SITE_NAME,
     sampler: new _zipkin.sampler.CountingSampler(1),
     traceId128Bit: true,
     recorder,
     kind: `client`,
   });
   return tracer;
-}; // Workaround for issue in Zipkin HTTP Logger where Spans are not
-// cleared off their processing queue before the node.js process
-// exits. Code is mostly the same as the zipkin processQueue
-// implementation.
-
+};
 exports.create = create;
-
 const _processQueue = async () => {
-  if (!constants.traces.collectTraces) {
+  if (!THEME_OPTIONS.traces.collectTraces) {
     return
   }
-  console.log('[@]gatsby-plugin-newrelic: Collecting traces')
   if (logger.queue.length > 0) {
     const formattedQueue = logger.queue.map((trace) => {
       const formatTrace = JSON.parse(trace)
-      // formatTrace.gatsbySite = constants ? constants.SITE_NAME : 'gatsby-site'
-
       formatTrace.localEndpoint = {}
-      formatTrace.localEndpoint.serviceName = constants.SITE_NAME
+      formatTrace.localEndpoint.serviceName = THEME_OPTIONS.SITE_NAME
       formatTrace.tags = {}
       if (formatTrace.annotations) {
         delete formatTrace['annotations']
@@ -87,12 +76,13 @@ const _processQueue = async () => {
       if (formatTrace.name === 'run-plugin') {
         formatTrace.name += `: ${formatTrace.tags.plugin}`
       }
-      const {tags} = constants.traces;
+      const {tags} = THEME_OPTIONS.traces;
       for (let tag in tags) {
         formatTrace.tags[tag] = tags[tag]
       }
-      formatTrace.tags.sessionId = constants.sessionId;
-      return JSON.stringify({...formatTrace,...constants.traces.tags})
+      formatTrace.tags.buildId = THEME_OPTIONS.buildId;
+      formatTrace.tags.gatsbySite = THEME_OPTIONS.SITE_NAME;
+      return JSON.stringify({...formatTrace,...THEME_OPTIONS.traces.tags})
     })
 
     const postBody = `[${formattedQueue.join(',')}]`
@@ -103,7 +93,7 @@ const _processQueue = async () => {
         body: postBody,
         headers: {
           'Content-Type': 'application/json',
-          'Api-Key': constants.NR_KEY,
+          'Api-Key': THEME_OPTIONS.NR_KEY,
           'Data-Format': 'zipkin',
           'Data-Format-Version': 2,
         },
@@ -123,23 +113,9 @@ const _processQueue = async () => {
     }
   }
 };
-/**
- * Run any tracer cleanup required before the node.js process
- * exits. For Zipkin HTTP, we must manually process any spans still on
- * the queue
- */
 
 const stop = async () => {
-  // First, write all partial spans to the http logger
-  // recorder.partialSpans.forEach((span, id) => {
-  //   console.log(recorder)
-  //   if (recorder._timedOut(span)) {
-  //     recorder._writeSpan(id);
-  //   }
-  // }); // Then tell http logger to process all spans in its queue
 
   await _processQueue();
 };
-
 exports.stop = stop;
-// # sourceMappingURL=zipkin-local.js.map
