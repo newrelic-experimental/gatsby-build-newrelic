@@ -1,10 +1,12 @@
 "use strict";
 
 require('newrelic');
-const pluginOptions = require(`../../gatsby-config`)
 
-const fs = require(`fs`);
-// fs.appendFileSync('cute2.txt', JSON.stringify() + `\n`)
+const pluginOptions = require(`../../gatsby-config`);
+
+const fs = require(`fs`); 
+
+
 const {
   cpuCoreCount
 } = require("gatsby-core-utils");
@@ -14,9 +16,10 @@ var ci = require('ci-info');
 const coreCount = cpuCoreCount();
 
 const constants = require('./constants');
+
 let THEME_OPTIONS = pluginOptions.plugins.filter(plugin => plugin.resolve === 'gatsby-plugin-newrelic-test')[0].options;
-THEME_OPTIONS.buildId = constants.buildId;
-// # sourceMappingURL=zipkin-local.js.map
+THEME_OPTIONS.buildId = constants.buildId; // # sourceMappingURL=zipkin-local.js.map
+
 const newrelicFormatter = require('@newrelic/winston-enricher');
 
 const NewrelicWinston = require('newrelic-agent-winston');
@@ -29,7 +32,7 @@ const winstonLogger = winston.createLogger({
   transports: [new NewrelicLogs({
     licenseKey: THEME_OPTIONS.NR_LICENSE,
     apiUrl: 'https://staging-log-api.newrelic.com',
-    pluginOptions: THEME_OPTIONS,
+    pluginOptions: THEME_OPTIONS
   }), new NewrelicWinston()],
   format: winston.format.combine(winston.format.label({
     serviceName: 'GatsbyWinston'
@@ -99,13 +102,13 @@ if (THEME_OPTIONS.logs.collectLogs) {
         if (copyChunk !== '') {
           winstonLogger.log({
             level: 'info',
-            message: copyChunk,
+            message: copyChunk
           });
         }
       } catch (e) {
         winstonLogger.log({
           level: 'error',
-          message: e.message,
+          message: e.message
         });
       }
     }
@@ -116,7 +119,7 @@ if (THEME_OPTIONS.logs.collectLogs) {
   console.error = function (d) {
     winstonLogger.log({
       level: 'error',
-      message: d,
+      message: d
     });
   };
 
@@ -124,7 +127,7 @@ if (THEME_OPTIONS.logs.collectLogs) {
     //
     winstonLogger.log({
       level: 'warn',
-      message: d,
+      message: d
     });
   };
 }
@@ -247,7 +250,7 @@ class BenchMeta {
       contentSource: process.env.BENCHMARK_CONTENT_SOURCE,
       siteType: process.env.BENCHMARK_SITE_TYPE,
       repoName: process.env.BENCHMARK_REPO_NAME,
-      buildType,
+      buildType
     };
   }
 
@@ -336,15 +339,14 @@ class BenchMeta {
     const sharpVersion = fs.existsSync(`node_modules/sharp/package.json`) ? require(`sharp/package.json`).version : `none`;
 
     const webpackVersion = require(`webpack/package.json`).version;
-    fs.appendFileSync('cute4.txt', THEME_OPTIONS.buildId)
+
     const publicJsSize = glob(`public/*.js`).reduce((t, file) => t + fs.statSync(file).size, 0);
     const jpgCount = execToInt(`find public .cache  -type f -iname "*.jpg" -or -iname "*.jpeg" | wc -l`);
     const pngCount = execToInt(`find public .cache  -type f -iname "*.png" | wc -l`);
     const gifCount = execToInt(`find public .cache  -type f -iname "*.gif" | wc -l`);
     const otherCount = execToInt(`find public .cache  -type f -iname "*.bmp" -or -iname "*.tif" -or -iname "*.webp" -or -iname "*.svg" | wc -l`);
     const benchmarkMetadata = this.getMetadata();
-    const attributes = { 
-      ...ciAttributes,
+    const attributes = { ...ciAttributes,
       gatsbySite: THEME_OPTIONS.SITE_NAME,
       gitHash,
       gitCommitTimestamp,
@@ -541,7 +543,7 @@ process.on(`exit`, () => {
 });
 
 async function onPreInit(api, themeOptions) {
-  THEME_OPTIONS = themeOptions
+  THEME_OPTIONS = themeOptions;
   !themeOptions.traces.collectTraces && reportInfo('[!] gatsby-newrelic-plugin: Not collecting Traces');
   !themeOptions.logs.collectLogs && reportInfo('[!] gatsby-newrelic-plugin: Not collecting Logs');
   !themeOptions.metrics.collectMetrics && reportInfo('[!] gatsby-newrelic-plugin: Not collecting Metrics');
