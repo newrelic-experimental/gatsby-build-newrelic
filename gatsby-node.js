@@ -47,7 +47,7 @@ const nodeFetch = require(`node-fetch`); // Create a logger instance
 const winstonLogger = winston.createLogger({
   transports: [new NewrelicLogs({
     licenseKey: THEME_OPTIONS.NR_LICENSE_KEY,
-    apiUrl: `https://${THEME_OPTIONS.staging && `staging-`}log-api.newrelic.com`,
+    apiUrl: `https://${THEME_OPTIONS.staging ? `staging-` : ``}log-api.newrelic.com`,
     pluginOptions: THEME_OPTIONS
   })],
   format: newrelicFormatter()

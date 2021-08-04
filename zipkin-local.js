@@ -27,7 +27,7 @@ const create = () => {
   logger = new _zipkinTransportHttp.HttpLogger({
     // endpoint of local docker zipkin instance
     endpoint: `https://${
-      THEME_OPTIONS.staging && `staging-`
+      THEME_OPTIONS.staging ? `staging-` : ``
     }trace-api.newrelic.com/trace/v1`,
     headers: {
       "Api-Key": THEME_OPTIONS.NR_INGEST_KEY,

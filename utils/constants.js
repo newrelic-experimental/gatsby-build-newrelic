@@ -21,7 +21,7 @@ if (THEME_OPTIONS.metrics === undefined){
   };
 }
 const CI_NAME = ci.name || 'local';
-const BENCHMARK_REPORTING_URL = `https://${THEME_OPTIONS.staging && `staging-`}metric-api.newrelic.com/metric/v1`;
+const BENCHMARK_REPORTING_URL = `https://${THEME_OPTIONS.staging ? `staging-` : ``}metric-api.newrelic.com/metric/v1`;
 module.exports = {
   THEME_OPTIONS,
   CI_NAME,

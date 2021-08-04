@@ -32,7 +32,7 @@ const winstonLogger = winston.createLogger({
     new NewrelicLogs({
       licenseKey: THEME_OPTIONS.NR_LICENSE_KEY,
       apiUrl: `https://${
-        THEME_OPTIONS.staging && `staging-`
+        THEME_OPTIONS.staging ? `staging-` : ``
       }log-api.newrelic.com`,
       pluginOptions: THEME_OPTIONS,
     }),
