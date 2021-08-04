@@ -2,7 +2,7 @@
 
 var _process$env$BENCHMAR;
 
-require('newrelic');
+require("newrelic");
 
 const fs = require(`fs`);
 
@@ -16,22 +16,22 @@ const {
   THEME_OPTIONS,
   CI_NAME,
   BENCHMARK_REPORTING_URL
-} = require('gatsby-plugin-newrelic-test/utils/constants');
+} = require("gatsby-plugin-newrelic-test/utils/constants");
 
-const newrelicFormatter = require('@newrelic/winston-enricher');
+const newrelicFormatter = require("@newrelic/winston-enricher");
 
-const NewrelicLogs = require('winston-to-newrelic-logs');
+const NewrelicLogs = require("winston-to-newrelic-logs");
 
-const winston = require('winston');
+const winston = require("winston");
 
 const {
   execToStr,
   execToInt
-} = require('./utils/execTo');
+} = require("./utils/execTo");
 
 const {
   getCiData
-} = require('./utils/getCiData');
+} = require("./utils/getCiData");
 
 const {
   performance
@@ -46,7 +46,7 @@ const nodeFetch = require(`node-fetch`); // Create a logger instance
 
 const winstonLogger = winston.createLogger({
   transports: [new NewrelicLogs({
-    licenseKey: THEME_OPTIONS.NR_LICENSE,
+    licenseKey: THEME_OPTIONS.NR_LICENSE_KEY,
     apiUrl: `https://${THEME_OPTIONS.staging && `staging-`}log-api.newrelic.com`,
     pluginOptions: THEME_OPTIONS
   })],
@@ -57,95 +57,97 @@ let DELETED_PAGES,
     CLEARING_CACHE = false,
     LOGS_STARTED = false;
 
-if (THEME_OPTIONS.logs.collectLogs) {
-  !LOGS_STARTED && console.log(`[@] gatsby-plugin-newrelic: Streaming logs`);
-  LOGS_STARTED = true;
-  const originalStdoutWrite = process.stdout.write.bind(process.stdout); // Remove loading braille characters from log strings
+if (THEME_OPTIONS.NR_LICENSE_KEY) {
+  if (THEME_OPTIONS.logs.collectLogs) {
+    !LOGS_STARTED && console.log(`[@] gatsby-plugin-newrelic: Streaming logs`);
+    LOGS_STARTED = true;
+    const originalStdoutWrite = process.stdout.write.bind(process.stdout); // Remove loading braille characters from log strings
 
-  const brailleRegex = /⠋|⠙|⠹|⠸|⠼|⠴|⠦|⠧|⠇|⠏|\n/g; // Remove ANSI escape codes from log string
+    const brailleRegex = /⠋|⠙|⠹|⠸|⠼|⠴|⠦|⠧|⠇|⠏|\n/g; // Remove ANSI escape codes from log string
 
-  const regex = /[\u001b\u009b][[()#;?]*(?:[0-9]{1,4}(?:;[0-9]{0,4})*)?[0-9A-ORZcf-nqry=><]/g;
-  const deletedPagesRegex = /Deleted (.*?) pages/g;
-  const changedPagesRegex = /Found (.*?) changed pages/g;
-  const clearingCache = `we're deleting your site's cache`;
-  const ALREADY_LOGGED = {
-    'source and transform nodes': false,
-    'building schema': false,
-    'createPages': false,
-    'createPagesStatefully': false,
-    'extract queries from components': false,
-    'write out redirect data': false,
-    'onPostBootstrap': false,
-    'Building production JavaScript and CSS bundles': false,
-    'JavaScript and CSS webpack compilation Building HTML renderer': false,
-    'JavaScript and CSS webpack compilation': false,
-    'Building HTML renderer': false,
-    'warn GATSBY_NEWRELIC_ENV env variable is not set': false,
-    'onPostBuild': false,
-    'initialize cache': false
-  };
+    const regex = /[\u001b\u009b][[()#;?]*(?:[0-9]{1,4}(?:;[0-9]{0,4})*)?[0-9A-ORZcf-nqry=><]/g;
+    const deletedPagesRegex = /Deleted (.*?) pages/g;
+    const changedPagesRegex = /Found (.*?) changed pages/g;
+    const clearingCache = `we're deleting your site's cache`;
+    const ALREADY_LOGGED = {
+      "source and transform nodes": false,
+      "building schema": false,
+      createPages: false,
+      createPagesStatefully: false,
+      "extract queries from components": false,
+      "write out redirect data": false,
+      onPostBootstrap: false,
+      "Building production JavaScript and CSS bundles": false,
+      "JavaScript and CSS webpack compilation Building HTML renderer": false,
+      "JavaScript and CSS webpack compilation": false,
+      "Building HTML renderer": false,
+      "warn GATSBY_NEWRELIC_ENV env variable is not set": false,
+      onPostBuild: false,
+      "initialize cache": false
+    };
 
-  process.stdout.write = (chunk, encoding, callback) => {
-    let copyChunk = chunk;
+    process.stdout.write = (chunk, encoding, callback) => {
+      let copyChunk = chunk;
 
-    if (typeof copyChunk === 'string') {
-      try {
-        copyChunk = copyChunk.replace(regex, "").replace(brailleRegex, '').trimStart();
+      if (typeof copyChunk === "string") {
+        try {
+          copyChunk = copyChunk.replace(regex, "").replace(brailleRegex, "").trimStart();
 
-        if (Object.keys(ALREADY_LOGGED).includes(copyChunk)) {
-          if (ALREADY_LOGGED[copyChunk]) {
-            return originalStdoutWrite(chunk, encoding, callback);
-          } else {
-            ALREADY_LOGGED[copyChunk] = true;
+          if (Object.keys(ALREADY_LOGGED).includes(copyChunk)) {
+            if (ALREADY_LOGGED[copyChunk]) {
+              return originalStdoutWrite(chunk, encoding, callback);
+            } else {
+              ALREADY_LOGGED[copyChunk] = true;
+            }
           }
-        }
 
-        let deletedPages = deletedPagesRegex.exec(copyChunk);
-        let changedPages = changedPagesRegex.exec(copyChunk);
+          let deletedPages = deletedPagesRegex.exec(copyChunk);
+          let changedPages = changedPagesRegex.exec(copyChunk);
 
-        if (deletedPages) {
-          DELETED_PAGES = deletedPages[1];
-        }
+          if (deletedPages) {
+            DELETED_PAGES = deletedPages[1];
+          }
 
-        if (changedPages) {
-          CHANGED_PAGES = changedPages[1];
-        }
+          if (changedPages) {
+            CHANGED_PAGES = changedPages[1];
+          }
 
-        if (copyChunk.includes(clearingCache)) {
-          CLEARING_CACHE = true;
-        }
+          if (copyChunk.includes(clearingCache)) {
+            CLEARING_CACHE = true;
+          }
 
-        if (copyChunk !== '') {
+          if (copyChunk !== "") {
+            winstonLogger.log({
+              level: "info",
+              message: copyChunk
+            });
+          }
+        } catch (err) {
           winstonLogger.log({
-            level: 'info',
-            message: copyChunk
+            level: "error",
+            message: err.message
           });
         }
-      } catch (err) {
-        winstonLogger.log({
-          level: 'error',
-          message: err.message
-        });
       }
-    }
 
-    return originalStdoutWrite(chunk, encoding, callback);
-  };
+      return originalStdoutWrite(chunk, encoding, callback);
+    };
 
-  console.error = function (msg) {
-    winstonLogger.log({
-      level: 'error',
-      message: msg
-    });
-  };
+    console.error = function (msg) {
+      winstonLogger.log({
+        level: "error",
+        message: msg
+      });
+    };
 
-  console.warn = function (msg) {
-    //
-    winstonLogger.log({
-      level: 'warn',
-      message: msg
-    });
-  };
+    console.warn = function (msg) {
+      //
+      winstonLogger.log({
+        level: "warn",
+        message: msg
+      });
+    };
+  }
 }
 
 const bootstrapTime = performance.now();
@@ -248,10 +250,10 @@ class BenchMeta {
     const gitHash = execToStr(`git rev-parse HEAD`); // Git only supports UTC tz through env var, but the unix time stamp is UTC
 
     const gitAuthor = execToStr(`git show ${gitHash} | grep Author`);
-    const gitRepoName = execToStr('basename `git rev-parse --show-toplevel`');
+    const gitRepoName = execToStr("basename `git rev-parse --show-toplevel`");
     const unixStamp = execToStr(`git show --quiet --date=unix --format="%cd"`);
     const gitCommitTimestamp = new Date(parseInt(unixStamp, 10) * 1000).toISOString();
-    const nodeEnv = process.env.NODE_ENV || 'n/a';
+    const nodeEnv = process.env.NODE_ENV || "n/a";
     const nodejsVersion = process.version;
     const gatsbyCliVersion = execToStr(`node_modules/.bin/gatsby --version`);
 
@@ -310,72 +312,72 @@ class BenchMeta {
     var timestamp = Date.now();
     const timeelapsed = this.timestamps.benchmarkEnd - this.timestamps.benchmarkStart;
     return [{
-      "metrics": [{
-        "name": "mdxFiles",
-        "type": "gauge",
-        "value": mdxCount,
-        "timestamp": timestamp,
-        "attributes": attributes
+      metrics: [{
+        name: "mdxFiles",
+        type: "gauge",
+        value: mdxCount,
+        timestamp: timestamp,
+        attributes: attributes
       }, {
-        "name": "jsSize",
-        "type": "gauge",
-        "value": publicJsSize,
-        "timestamp": timestamp,
-        "attributes": attributes
+        name: "jsSize",
+        type: "gauge",
+        value: publicJsSize,
+        timestamp: timestamp,
+        attributes: attributes
       }, {
-        "name": "pngs",
-        "type": "gauge",
-        "value": pngCount,
-        "timestamp": timestamp,
-        "attributes": attributes
+        name: "pngs",
+        type: "gauge",
+        value: pngCount,
+        timestamp: timestamp,
+        attributes: attributes
       }, {
-        "name": "jpgs",
-        "type": "gauge",
-        "value": jpgCount,
-        "timestamp": timestamp,
-        "attributes": attributes
+        name: "jpgs",
+        type: "gauge",
+        value: jpgCount,
+        timestamp: timestamp,
+        attributes: attributes
       }, {
-        "name": "otherImages",
-        "type": "gauge",
-        "value": otherImagesCount,
-        "timestamp": timestamp,
-        "attributes": attributes
+        name: "otherImages",
+        type: "gauge",
+        value: otherImagesCount,
+        timestamp: timestamp,
+        attributes: attributes
       }, {
-        "name": "gifs",
-        "type": "gauge",
-        "value": gifCount,
-        "timestamp": timestamp,
-        "attributes": attributes
+        name: "gifs",
+        type: "gauge",
+        value: gifCount,
+        timestamp: timestamp,
+        attributes: attributes
       }, {
-        "name": "memory-rss",
-        "type": "gauge",
-        "value": rss !== null && rss !== void 0 ? rss : 0,
-        "timestamp": timestamp,
-        "attributes": attributes
+        name: "memory-rss",
+        type: "gauge",
+        value: rss !== null && rss !== void 0 ? rss : 0,
+        timestamp: timestamp,
+        attributes: attributes
       }, {
-        "name": "memory-heapTotal",
-        "type": "gauge",
-        "value": heapTotal !== null && heapTotal !== void 0 ? heapTotal : 0,
-        "timestamp": timestamp,
-        "attributes": attributes
+        name: "memory-heapTotal",
+        type: "gauge",
+        value: heapTotal !== null && heapTotal !== void 0 ? heapTotal : 0,
+        timestamp: timestamp,
+        attributes: attributes
       }, {
-        "name": "memory-heapUsed",
-        "type": "gauge",
-        "value": heapUsed !== null && heapUsed !== void 0 ? heapUsed : 0,
-        "timestamp": timestamp,
-        "attributes": attributes
+        name: "memory-heapUsed",
+        type: "gauge",
+        value: heapUsed !== null && heapUsed !== void 0 ? heapUsed : 0,
+        timestamp: timestamp,
+        attributes: attributes
       }, {
-        "name": "memory-external",
-        "type": "gauge",
-        "value": external !== null && external !== void 0 ? external : 0,
-        "timestamp": timestamp,
-        "attributes": attributes
+        name: "memory-external",
+        type: "gauge",
+        value: external !== null && external !== void 0 ? external : 0,
+        timestamp: timestamp,
+        attributes: attributes
       }, {
-        "name": "build-times",
-        "type": "gauge",
-        "value": timeelapsed,
-        "timestamp": timestamp,
-        "attributes": buildtimes
+        name: "build-times",
+        type: "gauge",
+        value: timeelapsed,
+        timestamp: timestamp,
+        attributes: buildtimes
       }]
     }];
   }
@@ -421,13 +423,19 @@ class BenchMeta {
       return this.flushing = Promise.resolve();
     }
 
+    if (!THEME_OPTIONS.NR_INGEST_KEY) {
+      console.log(`[!] gatsby-plugin-newrelic: NR_INGEST_KEY not set`);
+      this.flushed = true;
+      return this.flushing = Promise.resolve();
+    }
+
     reportInfo(`[@] gatsby-plugin-newrelic: Flushing benchmark data to remote server...`);
     let lastStatus = 0;
     this.flushing = nodeFetch(`${BENCHMARK_REPORTING_URL}`, {
       method: `POST`,
       headers: {
         "content-type": `application/json`,
-        "Api-Key": THEME_OPTIONS.NR_KEY
+        "Api-Key": THEME_OPTIONS.NR_INGEST_KEY
       },
       body: json
     }).then(res => {
@@ -473,9 +481,11 @@ process.on(`exit`, () => {
 async function onPreInit(api) {
   var _THEME_OPTIONS$logs;
 
-  !THEME_OPTIONS.traces.collectTraces && reportInfo('[!] gatsby-newrelic-plugin: Not collecting Traces');
-  !((_THEME_OPTIONS$logs = THEME_OPTIONS.logs) !== null && _THEME_OPTIONS$logs !== void 0 && _THEME_OPTIONS$logs.collectLogs) && reportInfo('[!] gatsby-newrelic-plugin: Not collecting Logs');
-  !THEME_OPTIONS.metrics.collectMetrics && reportInfo('[!] gatsby-newrelic-plugin: Not collecting Metrics');
+  !THEME_OPTIONS.NR_INGEST_KEY && reportInfo(`[!] gatsby-plugin-newrelic: NR_INGEST_KEY not set`);
+  !THEME_OPTIONS.NR_LICENSE_KEY && reportInfo(`[!] gatsby-plugin-newrelic: NR_LICENSE_KEY not set`);
+  !THEME_OPTIONS.traces.collectTraces && reportInfo("[!] gatsby-newrelic-plugin: Not collecting Traces");
+  !((_THEME_OPTIONS$logs = THEME_OPTIONS.logs) !== null && _THEME_OPTIONS$logs !== void 0 && _THEME_OPTIONS$logs.collectLogs) && reportInfo("[!] gatsby-newrelic-plugin: Not collecting Logs");
+  !THEME_OPTIONS.metrics.collectMetrics && reportInfo("[!] gatsby-newrelic-plugin: Not collecting Metrics");
   lastApi = api;
   init(`preInit`);
   THEME_OPTIONS.metrics.collectMetrics && benchMeta.markDataPoint(`preInit`);

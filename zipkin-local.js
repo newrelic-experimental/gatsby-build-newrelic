@@ -1,19 +1,21 @@
-'use strict';
-const _interopRequireDefault = require('@babel/runtime/helpers/interopRequireDefault');
-const { THEME_OPTIONS } = require('gatsby-plugin-newrelic-test/utils/constants');
-const { getCiData } = require('./utils/getCiData');
+"use strict";
+const _interopRequireDefault = require("@babel/runtime/helpers/interopRequireDefault");
+const {
+  THEME_OPTIONS,
+} = require("gatsby-plugin-newrelic-test/utils/constants");
+const { getCiData } = require("./utils/getCiData");
 const ciAttributes = getCiData();
 exports.__esModule = true;
 exports.stop = exports.create = void 0;
 
-const _zipkin = _interopRequireDefault(require('zipkin'));
+const _zipkin = _interopRequireDefault(require("zipkin"));
 
-const _zipkinTransportHttp = require('zipkin-transport-newrelic');
+const _zipkinTransportHttp = require("zipkin-transport-newrelic");
 
 const _zipkinJavascriptOpentracing = _interopRequireDefault(
-  require('zipkin-javascript-opentracing')
+  require("zipkin-javascript-opentracing")
 );
-const _nodeFetch = _interopRequireDefault(require('node-fetch'));
+const _nodeFetch = _interopRequireDefault(require("node-fetch"));
 let logger;
 let recorder;
 /**
@@ -24,13 +26,15 @@ let recorder;
 const create = () => {
   logger = new _zipkinTransportHttp.HttpLogger({
     // endpoint of local docker zipkin instance
-    endpoint: `https://${THEME_OPTIONS.staging && `staging-`}trace-api.newrelic.com/trace/v1`,
+    endpoint: `https://${
+      THEME_OPTIONS.staging && `staging-`
+    }trace-api.newrelic.com/trace/v1`,
     headers: {
-      'Api-Key': THEME_OPTIONS.NR_INGEST_KEY,
-      'Data-Format': 'zipkin',
-      'Data-Format-Version': 2,
-      'options': THEME_OPTIONS,
-      'tags': {
+      "Api-Key": THEME_OPTIONS.NR_INGEST_KEY,
+      "Data-Format": "zipkin",
+      "Data-Format-Version": 2,
+      options: THEME_OPTIONS,
+      tags: {
         ...THEME_OPTIONS.traces.tags,
         ...ciAttributes,
       },
@@ -54,53 +58,53 @@ const create = () => {
 };
 exports.create = create;
 const _processQueue = async () => {
-  if (!THEME_OPTIONS.traces.collectTraces) {
-    return
+  if (!THEME_OPTIONS.NR_INGEST_KEY || !THEME_OPTIONS.traces.collectTraces) {
+    return;
   }
   if (logger.queue.length > 0) {
     const formattedQueue = logger.queue.map((trace) => {
-      const formatTrace = JSON.parse(trace)
-      formatTrace.localEndpoint = {}
-      formatTrace.localEndpoint.serviceName = THEME_OPTIONS.SITE_NAME
-      formatTrace.tags = {}
+      const formatTrace = JSON.parse(trace);
+      formatTrace.localEndpoint = {};
+      formatTrace.localEndpoint.serviceName = THEME_OPTIONS.SITE_NAME;
+      formatTrace.tags = {};
       if (formatTrace.annotations) {
-        delete formatTrace['annotations']
+        delete formatTrace["annotations"];
       }
       if (formatTrace.binaryAnnotations) {
         for (let anno of formatTrace.binaryAnnotations) {
-          formatTrace.tags[anno.key] = anno.value
+          formatTrace.tags[anno.key] = anno.value;
         }
-        delete formatTrace['binaryAnnotations']
+        delete formatTrace["binaryAnnotations"];
       }
-      if (formatTrace.name === 'run-api') {
-        formatTrace.name += `: ${formatTrace.tags.api}`
+      if (formatTrace.name === "run-api") {
+        formatTrace.name += `: ${formatTrace.tags.api}`;
       }
-      if (formatTrace.name === 'run-plugin') {
-        formatTrace.name += `: ${formatTrace.tags.plugin}`
+      if (formatTrace.name === "run-plugin") {
+        formatTrace.name += `: ${formatTrace.tags.plugin}`;
       }
-      const {tags} = THEME_OPTIONS.traces;
+      const { tags } = THEME_OPTIONS.traces;
       for (let tag in tags) {
-        formatTrace.tags[tag] = tags[tag]
+        formatTrace.tags[tag] = tags[tag];
       }
       formatTrace.tags.buildId = THEME_OPTIONS.buildId;
       formatTrace.tags.gatsbySite = THEME_OPTIONS.SITE_NAME;
       return JSON.stringify({
         ...formatTrace,
-        ...THEME_OPTIONS.traces.tags
-      })
-    })
+        ...THEME_OPTIONS.traces.tags,
+      });
+    });
 
-    const postBody = `[${formattedQueue.join(',')}]`
-    
+    const postBody = `[${formattedQueue.join(",")}]`;
+
     try {
       const response = await (0, _nodeFetch.default)(logger.endpoint, {
         method: `POST`,
         body: postBody,
         headers: {
-          'Content-Type': 'application/json',
-          'Api-Key': THEME_OPTIONS.NR_KEY,
-          'Data-Format': 'zipkin',
-          'Data-Format-Version': 2,
+          "Content-Type": "application/json",
+          "Api-Key": THEME_OPTIONS.NR_INGEST_KEY,
+          "Data-Format": "zipkin",
+          "Data-Format-Version": 2,
         },
       });
 
@@ -120,7 +124,6 @@ const _processQueue = async () => {
 };
 
 const stop = async () => {
-
   await _processQueue();
 };
 exports.stop = stop;
