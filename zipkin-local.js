@@ -1,9 +1,8 @@
 'use strict';
 const _interopRequireDefault = require('@babel/runtime/helpers/interopRequireDefault');
-const pluginOptions = require(`../../gatsby-config`)
-const constants = require('./constants');
-let THEME_OPTIONS = pluginOptions.plugins.filter(plugin => plugin.resolve === 'gatsby-plugin-newrelic-test')[0].options;
-THEME_OPTIONS.buildId = constants.buildId;
+const { THEME_OPTIONS } = require('gatsby-plugin-newrelic-test/utils/constants');
+const { getCiData } = require('./utils/getCiData');
+const ciAttributes = getCiData();
 exports.__esModule = true;
 exports.stop = exports.create = void 0;
 
@@ -25,13 +24,16 @@ let recorder;
 const create = () => {
   logger = new _zipkinTransportHttp.HttpLogger({
     // endpoint of local docker zipkin instance
-    endpoint: `https://staging-trace-api.newrelic.com/trace/v1`,
+    endpoint: `https://${THEME_OPTIONS.staging && `staging-`}trace-api.newrelic.com/trace/v1`,
     headers: {
-      'Api-Key': THEME_OPTIONS.NR_KEY,
+      'Api-Key': THEME_OPTIONS.NR_INGEST_KEY,
       'Data-Format': 'zipkin',
       'Data-Format-Version': 2,
       'options': THEME_OPTIONS,
-      'tags': THEME_OPTIONS.traces.tags,
+      'tags': {
+        ...THEME_OPTIONS.traces.tags,
+        ...ciAttributes,
+      },
     },
   });
   recorder = new _zipkin.BatchRecorder({
@@ -82,7 +84,10 @@ const _processQueue = async () => {
       }
       formatTrace.tags.buildId = THEME_OPTIONS.buildId;
       formatTrace.tags.gatsbySite = THEME_OPTIONS.SITE_NAME;
-      return JSON.stringify({...formatTrace,...THEME_OPTIONS.traces.tags})
+      return JSON.stringify({
+        ...formatTrace,
+        ...THEME_OPTIONS.traces.tags
+      })
     })
 
     const postBody = `[${formattedQueue.join(',')}]`
@@ -101,13 +106,13 @@ const _processQueue = async () => {
 
       if (response.status !== 202) {
         const err =
-          `gatsby-plugin-newrelic: Unexpected response while sending trace data, status:` +
+          `[@] gatsby-plugin-newrelic: Unexpected response while sending trace data, status:` +
           `${response.status}, body: ${postBody}`;
         if (logger.errorListenerSet) logger.emit(`error`, new Error(err));
         else console.error(err);
       }
     } catch (error) {
-      const err = `gatsby-plugin-newrelic: Error sending trace data ${error}`;
+      const err = `[@] gatsby-plugin-newrelic: Error sending trace data ${error}`;
       if (logger.errorListenerSet) logger.emit(`error`, new Error(err));
       console.error(err);
     }

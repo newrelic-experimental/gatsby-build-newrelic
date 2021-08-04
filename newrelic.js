@@ -1,5 +1,5 @@
 'use strict'
-const constants = require('./constants');
+const {THEME_OPTIONS} = require('./constants');
 
 /**
  * New Relic agent configuration.
@@ -11,11 +11,11 @@ exports.config = {
   /**
    * Array of application names.
    */
-  app_name: [constants.SITE_NAME],
+  app_name: [THEME_OPTIONS.SITE_NAME],
   /**
    * Your New Relic license key.
    */
-  license_key: constants.NR_LICENSE,
+  license_key: THEME_OPTIONS.NR_LICENSE,
   /**
    * This setting controls distributed tracing.
    * Distributed tracing lets you see the path that a request takes through your

@@ -1,53 +1,54 @@
 "use strict";
-
 require('newrelic');
-
-const pluginOptions = require(`../../gatsby-config`);
-
-const fs = require(`fs`); 
-
+const fs = require(`fs`);
 
 const {
   cpuCoreCount
 } = require("gatsby-core-utils");
 
-var ci = require('ci-info');
-
 const coreCount = cpuCoreCount();
 
-const constants = require('./constants');
-
-let THEME_OPTIONS = pluginOptions.plugins.filter(plugin => plugin.resolve === 'gatsby-plugin-newrelic-test')[0].options;
-THEME_OPTIONS.buildId = constants.buildId; // # sourceMappingURL=zipkin-local.js.map
+const {THEME_OPTIONS, CI_NAME, BENCHMARK_REPORTING_URL} = require('gatsby-plugin-newrelic-test/utils/constants');
 
 const newrelicFormatter = require('@newrelic/winston-enricher');
-
-const NewrelicWinston = require('newrelic-agent-winston');
 
 const NewrelicLogs = require('winston-to-newrelic-logs');
 
 const winston = require('winston');
+const { execToStr, execToInt } = require('./utils/execTo');
+const { getCiData } = require('./utils/getCiData');
 
+const {
+  performance
+} = require(`perf_hooks`);
+
+const {
+  sync: glob
+} = require(`fast-glob`);
+
+const nodeFetch = require(`node-fetch`);
+
+// Create a logger instance
 const winstonLogger = winston.createLogger({
   transports: [new NewrelicLogs({
     licenseKey: THEME_OPTIONS.NR_LICENSE,
-    apiUrl: 'https://staging-log-api.newrelic.com',
+    apiUrl: `https://${THEME_OPTIONS.staging && `staging-`}log-api.newrelic.com`,
     pluginOptions: THEME_OPTIONS
-  }), new NewrelicWinston()],
-  format: winston.format.combine(winston.format.label({
-    serviceName: 'GatsbyWinston'
-  }), newrelicFormatter())
+  })],
+  format: newrelicFormatter()
 });
-let logsStarted = false;
 let DELETED_PAGES,
     CHANGED_PAGES,
-    CLEARING_CACHE = false; // Logging Functionality
+    CLEARING_CACHE = false,
+    LOGS_STARTED = false;
 
 if (THEME_OPTIONS.logs.collectLogs) {
-  !logsStarted && console.log(`[@] gatsby-plugin-newrelic: Streaming logs`);
-  logsStarted = true;
+  !LOGS_STARTED && console.log(`[@] gatsby-plugin-newrelic: Streaming logs`);
+  LOGS_STARTED = true;
   const originalStdoutWrite = process.stdout.write.bind(process.stdout);
+  // Remove loading braille characters from log strings
   const brailleRegex = /⠋|⠙|⠹|⠸|⠼|⠴|⠦|⠧|⠇|⠏|\n/g;
+  // Remove ANSI escape codes from log string
   const regex = /[\u001b\u009b][[()#;?]*(?:[0-9]{1,4}(?:;[0-9]{0,4})*)?[0-9A-ORZcf-nqry=><]/g;
   const deletedPagesRegex = /Deleted (.*?) pages/g;
   const changedPagesRegex = /Found (.*?) changed pages/g;
@@ -105,81 +106,49 @@ if (THEME_OPTIONS.logs.collectLogs) {
             message: copyChunk
           });
         }
-      } catch (e) {
+      } catch (err) {
         winstonLogger.log({
           level: 'error',
-          message: e.message
+          message: err.message
         });
       }
     }
-
+    
     return originalStdoutWrite(chunk, encoding, callback);
   };
 
-  console.error = function (d) {
+  console.error = function (msg) {
     winstonLogger.log({
       level: 'error',
-      message: d
+      message: msg
     });
   };
 
-  console.warn = function (d) {
+  console.warn = function (msg) {
     //
     winstonLogger.log({
       level: 'warn',
-      message: d
+      message: msg
     });
   };
 }
 
-var _process$env$BENCHMAR;
-
-const {
-  performance
-} = require(`perf_hooks`);
-
-const {
-  sync: glob
-} = require(`fast-glob`);
-
-const nodeFetch = require(`node-fetch`);
-
-const {
-  execSync
-} = require(`child_process`);
 
 const bootstrapTime = performance.now();
-const CI_NAME = ci.name || 'local';
-const BENCHMARK_REPORTING_URL = "https://staging-metric-api.newrelic.com/metric/v1";
 let lastApi; // Current benchmark state, if any. If none then create one on next lifecycle.
 
 let benchMeta;
-let nextBuildType = (_process$env$BENCHMAR = process.env.BENCHMARK_BUILD_TYPE) !== null && _process$env$BENCHMAR !== void 0 ? _process$env$BENCHMAR : `initial`;
+let nextBuildType = process.env.BENCHMARK_BUILD_TYPE ?? `initial`
 
 function reportInfo(...args) {
-  ;
   (lastApi ? lastApi.reporter : console).info(...args);
 }
 
 function reportError(...args) {
-  ;
   (lastApi ? lastApi.reporter : console).error(...args);
 }
 
-function execToStr(cmd) {
-  var _execSync;
 
-  return String((_execSync = execSync(cmd, {
-    encoding: `utf8`
-  })) !== null && _execSync !== void 0 ? _execSync : ``).trim();
-}
-
-function execToInt(cmd) {
-  // `parseInt` can return `NaN` for unexpected args
-  // `Number` can return undefined for unexpected args
-  // `0 | x` (bitwise or) will always return 0 for unexpected args, or 32bit int
-  return execToStr(cmd) | 0;
-}
 
 class BenchMeta {
   constructor() {
@@ -211,18 +180,13 @@ class BenchMeta {
   }
 
   getMetadata() {
-    var _process$env$BENCHMAR2;
-
     let siteId = ``;
 
     try {
-      var _JSON$parse$siteId, _JSON$parse, _process$env$GATSBY_T, _process$env; // The tags ought to be a json string, but we try/catch it just in case it's not, or not a valid json string
-
-
-      siteId = (_JSON$parse$siteId = (_JSON$parse = JSON.parse((_process$env$GATSBY_T = (_process$env = process.env) === null || _process$env === void 0 ? void 0 : _process$env.GATSBY_TELEMETRY_TAGS) !== null && _process$env$GATSBY_T !== void 0 ? _process$env$GATSBY_T : `{}`)) === null || _JSON$parse === void 0 ? void 0 : _JSON$parse.siteId) !== null && _JSON$parse$siteId !== void 0 ? _JSON$parse$siteId : ``; // Set by server
+      siteId = JSON.parse(process.env?.GATSBY_TELEMETRY_TAGS ?? `{}`)?.siteId ?? ``;
     } catch (e) {
       siteId = `error`;
-      reportInfo(`gatsby-plugin-newrelic: Suppressed an error trying to JSON.parse(GATSBY_TELEMETRY_TAGS): ${e}`);
+      reportInfo(`[@] gatsby-plugin-newrelic: Suppressed an error trying to JSON.parse(GATSBY_TELEMETRY_TAGS): ${e}`);
     }
     /**
      * If we are running in netlify, environment variables can be attached using the INCOMING_HOOK_BODY
@@ -231,7 +195,7 @@ class BenchMeta {
 
 
     let buildType = nextBuildType;
-    nextBuildType = (_process$env$BENCHMAR2 = process.env.BENCHMARK_BUILD_TYPE_NEXT) !== null && _process$env$BENCHMAR2 !== void 0 ? _process$env$BENCHMAR2 : `DATA_UPDATE`;
+    nextBuildType = process.env.BENCHMARK_BUILD_TYPE_NEXT ?? `DATA_UPDATE`;
     const incomingHookBodyEnv = process.env.INCOMING_HOOK_BODY;
 
     if (CI_NAME === `netlify` && incomingHookBodyEnv) {
@@ -239,25 +203,17 @@ class BenchMeta {
         const incomingHookBody = JSON.parse(incomingHookBodyEnv);
         buildType = incomingHookBody && incomingHookBody.buildType;
       } catch (e) {
-        reportInfo(`gatsby-plugin-newrelic: Suppressed an error trying to JSON.parse(INCOMING_HOOK_BODY): ${e}`);
+        reportInfo(`[@] gatsby-plugin-newrelic: Suppressed an error trying to JSON.parse(INCOMING_HOOK_BODY): ${e}`);
       }
     }
 
     return {
-      buildId: THEME_OPTIONS.buildId,
-      branch: process.env.BENCHMARK_BRANCH,
       siteId,
-      contentSource: process.env.BENCHMARK_CONTENT_SOURCE,
-      siteType: process.env.BENCHMARK_SITE_TYPE,
-      repoName: process.env.BENCHMARK_REPO_NAME,
       buildType
     };
   }
 
   getData() {
-    var _process$cwd; // Get memory usage snapshot first (just in case)
-
-
     const {
       rss,
       heapTotal,
@@ -270,85 +226,34 @@ class BenchMeta {
     } // For the time being, our target benchmarks are part of the main repo
     // And we will want to know what version of the repo we're testing with
     // This won't work as intended when running a site not in our repo (!)
-
-
-    let ciAttributes;
-    console.log(`[!] If you see issues with any attributes reporting incorrectly, please open an issue in GitHub`);
-    console.log(`[!] CI: ${CI_NAME}`);
-
-    try {
-      if (process.env.NETLIFY) {
-        ciAttributes = {
-          gitRepoUrl: process.env.REPOSITORY_URL,
-          gitBranch: process.env.BRANCH,
-          gitHead: process.env.HEAD,
-          gitCommit: process.env.COMMIT_REF,
-          gitCachedCommit: process.env.CACHED_COMMIT_REF,
-          gitPullRequest: process.env.PULL_REQUEST,
-          gitReviewId: process.env.REVIEW_ID,
-          buildId: process.env.BUILD_ID,
-          context: process.env.CONTEXT,
-          systemArchitecture: process.env._system_arch,
-          systemVersion: process.env._system_version,
-          url: process.env.URL,
-          deployUrl: process.env.DEPLOY_URL,
-          deployPrimeUrl: process.env.DEPLOY_PRIME_URL,
-          deployId: process.env.DEPLOY_ID,
-          ciSiteName: process.env.SITE_NAME,
-          ciSiteId: process.env.SITE_ID,
-          netlifyImagesCdnDomain: process.env.NETLIFY_IMAGES_CDN_DOMAIN
-        };
-      } else if (process.env.VERCEL) {
-        ciAttributes = {
-          gitRepoUrl: process.env.GATSBY_VERCEL_GIT_REPO_SLUG,
-          gitBranch: process.env.GATSBY_VERCEL_GIT_COMMIT_REF,
-          gitCommit: process.env.GATSBY_VERCEL_GIT_COMMIT_SHA,
-          context: process.env.GATSBY_VERCEL_ENV,
-          deployUrl: process.env.GATSBY_VERCEL_URL,
-          deployRegion: process.env.GATSBY_VERCEL_REGION
-        };
-      } else if (process.env.GATSBY_CLOUD) {
-        ciAttributes = {
-          gitRepoUrl: execToStr(`git config --get remote.origin.url`),
-          gitBranch: process.env.BRANCH,
-          gatsbyIsPreview: process.env.GATSBY_IS_PREVIEW,
-          gitCommit: execToStr(`git log --format="%H" -n 1`)
-        };
-      } else {
-        ciAttributes = {
-          gitRepoUrl: execToStr(`git config --get remote.origin.url`),
-          gitCommit: execToStr(`git log --format="%H" -n 1`),
-          gitBranch: execToStr(`git branch --show-current`)
-        };
-      }
-    } catch (error) {}
+    const ciAttributes = getCiData();
 
     const gitHash = execToStr(`git rev-parse HEAD`); // Git only supports UTC tz through env var, but the unix time stamp is UTC
-
+    const gitAuthor = execToStr(`git show ${gitHash} | grep Author`);
     const gitRepoName = execToStr('basename `git rev-parse --show-toplevel`');
     const unixStamp = execToStr(`git show --quiet --date=unix --format="%cd"`);
     const gitCommitTimestamp = new Date(parseInt(unixStamp, 10) * 1000).toISOString();
     const nodeEnv = process.env.NODE_ENV || 'n/a';
-    const nodejsVersion = process.version; // This assumes the benchmark is started explicitly from `node_modules/.bin/gatsby`, and not a global install
-    // (This is what `gatsby --version` does too, ultimately)
-
+    const nodejsVersion = process.version;
     const gatsbyCliVersion = execToStr(`node_modules/.bin/gatsby --version`);
-
     const gatsbyVersion = require(`gatsby/package.json`).version;
-
     const sharpVersion = fs.existsSync(`node_modules/sharp/package.json`) ? require(`sharp/package.json`).version : `none`;
-
     const webpackVersion = require(`webpack/package.json`).version;
-
     const publicJsSize = glob(`public/*.js`).reduce((t, file) => t + fs.statSync(file).size, 0);
+    const mdxCount = execToInt(`find public .cache  -type f -iname "*.mdx" | wc -l`);
     const jpgCount = execToInt(`find public .cache  -type f -iname "*.jpg" -or -iname "*.jpeg" | wc -l`);
     const pngCount = execToInt(`find public .cache  -type f -iname "*.png" | wc -l`);
     const gifCount = execToInt(`find public .cache  -type f -iname "*.gif" | wc -l`);
-    const otherCount = execToInt(`find public .cache  -type f -iname "*.bmp" -or -iname "*.tif" -or -iname "*.webp" -or -iname "*.svg" | wc -l`);
+    const otherImagesCount = execToInt(`find public .cache  -type f -iname "*.bmp" -or -iname "*.tif" -or -iname "*.webp" -or -iname "*.svg" | wc -l`);
     const benchmarkMetadata = this.getMetadata();
-    const attributes = { ...ciAttributes,
+    const attributes = { 
+      ...ciAttributes,
+      ...benchmarkMetadata,
+      ...THEME_OPTIONS.metrics.tags,
       gatsbySite: THEME_OPTIONS.SITE_NAME,
+      buildId: THEME_OPTIONS.buildId,
       gitHash,
+      gitAuthor,
       gitCommitTimestamp,
       gitRepoName,
       ciName: CI_NAME,
@@ -360,13 +265,12 @@ class BenchMeta {
       sharp: sharpVersion,
       webpack: webpackVersion,
       coreCount: coreCount,
-      ...benchmarkMetadata,
-      ...THEME_OPTIONS.metrics.tags,
       deletedPages: DELETED_PAGES,
       changedPages: CHANGED_PAGES,
       clearedCache: CLEARING_CACHE
     };
-    const buildtimes = { ...attributes,
+    const buildtimes = { 
+      ...attributes,
       bootstrapTime: this.timestamps.bootstrapTime,
       instantiationTime: this.timestamps.instantiationTime,
       // Instantiation time of this class
@@ -387,6 +291,12 @@ class BenchMeta {
     const timeelapsed = this.timestamps.benchmarkEnd - this.timestamps.benchmarkStart;
     return [{
       "metrics": [{
+        "name": "mdxFiles",
+        "type": "gauge",
+        "value": mdxCount,
+        "timestamp": timestamp,
+        "attributes": attributes
+      },{
         "name": "jsSize",
         "type": "gauge",
         "value": publicJsSize,
@@ -407,7 +317,7 @@ class BenchMeta {
       }, {
         "name": "otherImages",
         "type": "gauge",
-        "value": otherCount,
+        "value": otherImagesCount,
         "timestamp": timestamp,
         "attributes": attributes
       }, {
@@ -452,7 +362,7 @@ class BenchMeta {
 
   markStart() {
     if (this.started) {
-      reportError(`gatsby-plugin-newrelic: `, new Error(`Error: Should not call markStart() more than once`));
+      reportError(`[@] gatsby-plugin-newrelic: `, new Error(`Error: Should not call markStart() more than once`));
       process.exit(1);
     }
 
@@ -463,7 +373,7 @@ class BenchMeta {
   markDataPoint(name) {
     if (BENCHMARK_REPORTING_URL) {
       if (!(name in this.timestamps)) {
-        reportError(`gatsby-plugin-newrelic: Attempted to record a timestamp with a name (\`${name}\`) that wasn't expected`);
+        reportError(`[@] gatsby-plugin-newrelic: Attempted to record a timestamp with a name (\`${name}\`) that wasn't expected`);
         process.exit(1);
       }
     }
@@ -473,7 +383,7 @@ class BenchMeta {
 
   async markEnd() {
     if (!this.timestamps.benchmarkStart) {
-      reportError(`gatsby-plugin-newrelic:`, new Error(`Error: Should not call markEnd() before calling markStart()`));
+      reportError(`[@] gatsby-plugin-newrelic:`, new Error(`Error: Should not call markEnd() before calling markStart()`));
       process.exit(1);
     }
 
@@ -486,14 +396,13 @@ class BenchMeta {
     const json = JSON.stringify(data, null, 2);
 
     if (!BENCHMARK_REPORTING_URL) {
-      // reportInfo(`Gathered data: ` + json);
-      reportInfo(`gatsby-plugin-newrelic: MetricAPI BENCHMARK_REPORTING_URL not set, not submitting data`);
+      reportInfo(`[@] gatsby-plugin-newrelic: MetricAPI BENCHMARK_REPORTING_URL not set, not submitting data`);
       this.flushed = true;
       return this.flushing = Promise.resolve();
-    } // reportInfo(`Gathered data: ` + json);
+    } 
 
 
-    reportInfo(`Flushing benchmark data to remote server...`);
+    reportInfo(`[@] gatsby-plugin-newrelic: Flushing benchmark data to remote server...`);
     let lastStatus = 0;
     this.flushing = nodeFetch(`${BENCHMARK_REPORTING_URL}`, {
       method: `POST`,
@@ -506,9 +415,9 @@ class BenchMeta {
       lastStatus = res.status;
 
       if ([401, 500].includes(lastStatus)) {
-        reportInfo(`gatsby-plugin-newrelic: MetricAPI got ${lastStatus} response, waiting for text`);
+        reportInfo(`[@] gatsby-plugin-newrelic: MetricAPI got ${lastStatus} response, waiting for text`);
         res.text().then(content => {
-          reportError(`Response error`, new Error(`gatsby-plugin-newrelic: MetricAPI responded with a ${lastStatus} error: ${content}`));
+          reportError(`[@] gatsby-plugin-newrelic: Response error`, new Error(`MetricAPI responded with a ${lastStatus} error: ${content}`));
           process.exit(1);
         });
       }
@@ -517,17 +426,17 @@ class BenchMeta {
 
       return res.text();
     });
-    this.flushing.then(text => reportInfo(`gatsby-plugin-newrelic: MetricAPI response: ${lastStatus}: ${text}`));
+    this.flushing.then(text => reportInfo(`[@] gatsby-plugin-newrelic: MetricAPI response: ${lastStatus}: ${text}`));
     return this.flushing;
   }
 
 }
 
-function init(lifecycle) {
+function init() {
   if (!benchMeta && THEME_OPTIONS.metrics.collectMetrics) {
     benchMeta = new BenchMeta(); // This should be set in the gatsby-config of the site when enabling this plugin
 
-    reportInfo(`gatsby-plugin-newrelic: Will post benchmark data to: ${BENCHMARK_REPORTING_URL || `the CLI`}`);
+    reportInfo(`[@] gatsby-plugin-newrelic: Will post benchmark data to: ${BENCHMARK_REPORTING_URL || `the CLI`}`);
     benchMeta.markStart();
   }
 }
@@ -535,18 +444,17 @@ function init(lifecycle) {
 process.on(`exit`, () => {
   if (benchMeta && !benchMeta.flushed && BENCHMARK_REPORTING_URL) {
     // This is probably already a non-zero exit as otherwise node should wait for the last promise to complete
-    reportError(`gatsby-plugin-newrelic: error`, new Error(`This is process.exit(); gatsby-plugin-newrelic: MetricAPI collector has not completely flushed yet`));
+    reportError(`[@] gatsby-plugin-newrelic: error`, new Error(`This is process.exit(); [@] gatsby-plugin-newrelic: MetricAPI collector has not completely flushed yet`));
     process.stdout.write = originalStdoutWrite; // process.stderr.write = originalStderrWrite;
 
     process.exit(1);
   }
 });
 
-async function onPreInit(api, themeOptions) {
-  THEME_OPTIONS = themeOptions;
-  !themeOptions.traces.collectTraces && reportInfo('[!] gatsby-newrelic-plugin: Not collecting Traces');
-  !themeOptions.logs.collectLogs && reportInfo('[!] gatsby-newrelic-plugin: Not collecting Logs');
-  !themeOptions.metrics.collectMetrics && reportInfo('[!] gatsby-newrelic-plugin: Not collecting Metrics');
+async function onPreInit(api) {
+  !THEME_OPTIONS.traces.collectTraces && reportInfo('[!] gatsby-newrelic-plugin: Not collecting Traces');
+  !THEME_OPTIONS.logs?.collectLogs && reportInfo('[!] gatsby-newrelic-plugin: Not collecting Logs');
+  !THEME_OPTIONS.metrics.collectMetrics && reportInfo('[!] gatsby-newrelic-plugin: Not collecting Metrics');
   lastApi = api;
   init(`preInit`);
   THEME_OPTIONS.metrics.collectMetrics && benchMeta.markDataPoint(`preInit`);
