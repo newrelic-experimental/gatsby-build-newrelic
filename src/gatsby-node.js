@@ -1,5 +1,4 @@
 "use strict";
-require("newrelic");
 const fs = require(`fs`);
 
 const { cpuCoreCount } = require("gatsby-core-utils");
@@ -7,18 +6,16 @@ const { cpuCoreCount } = require("gatsby-core-utils");
 const coreCount = cpuCoreCount();
 
 const {
-  THEME_OPTIONS,
+  PLUGIN_OPTIONS,
   CI_NAME,
   BENCHMARK_REPORTING_URL,
 } = require("gatsby-plugin-newrelic-test/utils/constants");
-
-const newrelicFormatter = require("@newrelic/winston-enricher");
 
 const NewrelicLogs = require("winston-to-newrelic-logs");
 
 const winston = require("winston");
 const { execToStr, execToInt } = require("./utils/execTo");
-const { getCiData } = require("./utils/getCiData");
+const getCiData = require("./utils/getCiData");
 
 const { performance } = require(`perf_hooks`);
 
@@ -26,119 +23,126 @@ const { sync: glob } = require(`fast-glob`);
 
 const nodeFetch = require(`node-fetch`);
 
-// Create a logger instance
-const winstonLogger = winston.createLogger({
-  transports: [
-    new NewrelicLogs({
-      licenseKey: THEME_OPTIONS.NR_LICENSE_KEY,
-      apiUrl: `https://${
-        THEME_OPTIONS.staging ? `staging-` : ``
-      }log-api.newrelic.com`,
-      pluginOptions: THEME_OPTIONS,
-    }),
-  ],
-  format: newrelicFormatter(),
-});
 let DELETED_PAGES,
   CHANGED_PAGES,
   CLEARING_CACHE = false,
   LOGS_STARTED = false;
+const { 
+  NR_LICENSE_KEY, 
+  NR_INGEST_KEY,
+  staging,
+  logs: {collectLogs} = {collectLogs: true},
+  traces: {collectTraces} = {collectTraces: true},
+  metrics: {collectMetrics} = {collectMetrics: true},
+  metrics = {},
+} = PLUGIN_OPTIONS;
+// Create a logger instance
+const winstonLogger = winston.createLogger({
+  transports: [
+    new NewrelicLogs({
+      licenseKey: NR_LICENSE_KEY,
+      apiUrl: `https://${
+        staging ? `staging-` : ``
+      }log-api.newrelic.com`,
+      pluginOptions: PLUGIN_OPTIONS,
+    }),
+  ],
+});
 
-if (THEME_OPTIONS.NR_LICENSE_KEY) {
-  if (THEME_OPTIONS.logs.collectLogs) {
-    !LOGS_STARTED && console.log(`[@] gatsby-plugin-newrelic: Streaming logs`);
-    LOGS_STARTED = true;
-    const originalStdoutWrite = process.stdout.write.bind(process.stdout);
-    // Remove loading braille characters from log strings
-    const brailleRegex = /⠋|⠙|⠹|⠸|⠼|⠴|⠦|⠧|⠇|⠏|\n/g;
-    // Remove ANSI escape codes from log string
-    const regex =
-      /[\u001b\u009b][[()#;?]*(?:[0-9]{1,4}(?:;[0-9]{0,4})*)?[0-9A-ORZcf-nqry=><]/g;
-    const deletedPagesRegex = /Deleted (.*?) pages/g;
-    const changedPagesRegex = /Found (.*?) changed pages/g;
-    const clearingCache = `we're deleting your site's cache`;
-    const ALREADY_LOGGED = {
-      "source and transform nodes": false,
-      "building schema": false,
-      createPages: false,
-      createPagesStatefully: false,
-      "extract queries from components": false,
-      "write out redirect data": false,
-      onPostBootstrap: false,
-      "Building production JavaScript and CSS bundles": false,
-      "JavaScript and CSS webpack compilation Building HTML renderer": false,
-      "JavaScript and CSS webpack compilation": false,
-      "Building HTML renderer": false,
-      "warn GATSBY_NEWRELIC_ENV env variable is not set": false,
-      onPostBuild: false,
-      "initialize cache": false,
-    };
+if (NR_LICENSE_KEY && collectLogs) {
+  !LOGS_STARTED && console.log(`[@] gatsby-plugin-newrelic: Streaming logs`);
+  LOGS_STARTED = true;
+  const originalStdoutWrite = process.stdout.write.bind(process.stdout);
+  // Remove loading braille characters from log strings
+  const brailleRegex = /⠋|⠙|⠹|⠸|⠼|⠴|⠦|⠧|⠇|⠏|\n/g;
+  // Remove ANSI escape codes from log string
+  const regex =
+    /[\u001b\u009b][[()#;?]*(?:[0-9]{1,4}(?:;[0-9]{0,4})*)?[0-9A-ORZcf-nqry=><]/g;
+  const deletedPagesRegex = /Deleted (.*?) pages/g;
+  const changedPagesRegex = /Found (.*?) changed pages/g;
+  const clearingCache = `we're deleting your site's cache`;
+  // Only log repeated messages once
+  // const ALREADY_LOGGED = {
+  //   "source and transform nodes": false,
+  //   "building schema": false,
+  //   createPages: false,
+  //   createPagesStatefully: false,
+  //   "extract queries from components": false,
+  //   "write out redirect data": false,
+  //   onPostBootstrap: false,
+  //   "Building production JavaScript and CSS bundles": false,
+  //   "JavaScript and CSS webpack compilation Building HTML renderer": false,
+  //   "JavaScript and CSS webpack compilation": false,
+  //   "Building HTML renderer": false,
+  //   "warn GATSBY_NEWRELIC_ENV env variable is not set": false,
+  //   onPostBuild: false,
+  //   "initialize cache": false,
+  // };
 
-    process.stdout.write = (chunk, encoding, callback) => {
-      let copyChunk = chunk;
+  process.stdout.write = (chunk, encoding, callback) => {
+    let copyChunk = chunk;
 
-      if (typeof copyChunk === "string") {
-        try {
-          copyChunk = copyChunk
-            .replace(regex, "")
-            .replace(brailleRegex, "")
-            .trimStart();
+    if (typeof copyChunk === "string") {
+      try {
+        copyChunk = copyChunk
+          .replace(regex, "")
+          .replace(brailleRegex, "")
+          .trimStart();
 
-          if (Object.keys(ALREADY_LOGGED).includes(copyChunk)) {
-            if (ALREADY_LOGGED[copyChunk]) {
-              return originalStdoutWrite(chunk, encoding, callback);
-            } else {
-              ALREADY_LOGGED[copyChunk] = true;
-            }
-          }
+        // if (Object.keys(ALREADY_LOGGED).includes(copyChunk)) {
+        //   if (ALREADY_LOGGED[copyChunk]) {
+        //     return originalStdoutWrite(chunk, encoding, callback);
+        //   } else {
+        //     ALREADY_LOGGED[copyChunk] = true;
+        //   }
+        // }
 
-          let deletedPages = deletedPagesRegex.exec(copyChunk);
-          let changedPages = changedPagesRegex.exec(copyChunk);
+        let deletedPages = deletedPagesRegex.exec(copyChunk);
+        let changedPages = changedPagesRegex.exec(copyChunk);
 
-          if (deletedPages) {
-            DELETED_PAGES = deletedPages[1];
-          }
+        if (deletedPages) {
+          DELETED_PAGES = deletedPages[1];
+        }
 
-          if (changedPages) {
-            CHANGED_PAGES = changedPages[1];
-          }
+        if (changedPages) {
+          CHANGED_PAGES = changedPages[1];
+        }
 
-          if (copyChunk.includes(clearingCache)) {
-            CLEARING_CACHE = true;
-          }
+        if (copyChunk.includes(clearingCache)) {
+          CLEARING_CACHE = true;
+        }
 
-          if (copyChunk !== "") {
-            winstonLogger.log({
-              level: "info",
-              message: copyChunk,
-            });
-          }
-        } catch (err) {
+        if (copyChunk !== "") {
           winstonLogger.log({
-            level: "error",
-            message: err.message,
+            level: "info",
+            message: copyChunk,
           });
         }
+      } catch (err) {
+        winstonLogger.log({
+          level: "error",
+          message: err.message,
+        });
       }
+    }
 
-      return originalStdoutWrite(chunk, encoding, callback);
-    };
+    return originalStdoutWrite(chunk, encoding, callback);
+  };
 
-    console.error = function (msg) {
-      winstonLogger.log({
-        level: "error",
-        message: msg,
-      });
-    };
+  console.error = function (msg) {
+    winstonLogger.log({
+      level: "error",
+      message: msg,
+    });
+  };
 
-    console.warn = function (msg) {
-      //
-      winstonLogger.log({
-        level: "warn",
-        message: msg,
-      });
-    };
-  }
+  console.warn = function (msg) {
+    //
+    winstonLogger.log({
+      level: "warn",
+      message: msg,
+    });
+  };
 }
 
 const bootstrapTime = performance.now();
@@ -269,16 +273,16 @@ class BenchMeta {
     const attributes = {
       ...ciAttributes,
       ...benchmarkMetadata,
-      ...THEME_OPTIONS.metrics.tags,
-      gatsbySite: THEME_OPTIONS.SITE_NAME,
-      buildId: THEME_OPTIONS.buildId,
+      ...metrics.tags,
+      gatsbySite: PLUGIN_OPTIONS.SITE_NAME,
+      buildId: PLUGIN_OPTIONS.buildId,
       gitHash,
       gitAuthor,
       gitCommitTimestamp,
       gitRepoName,
       ciName: CI_NAME,
       nodeEnv,
-      newRelicSiteName: THEME_OPTIONS.SITE_NAME,
+      newRelicSiteName: PLUGIN_OPTIONS.SITE_NAME,
       nodejs: nodejsVersion,
       gatsby: gatsbyVersion,
       gatsbyCli: gatsbyCliVersion,
@@ -444,7 +448,7 @@ class BenchMeta {
       this.flushed = true;
       return (this.flushing = Promise.resolve());
     }
-    if (!THEME_OPTIONS.NR_INGEST_KEY) {
+    if (!NR_INGEST_KEY) {
       console.log(`[!] gatsby-plugin-newrelic: NR_INGEST_KEY not set`);
       this.flushed = true;
       return (this.flushing = Promise.resolve());
@@ -458,7 +462,7 @@ class BenchMeta {
       method: `POST`,
       headers: {
         "content-type": `application/json`,
-        "Api-Key": THEME_OPTIONS.NR_INGEST_KEY,
+        "Api-Key": NR_INGEST_KEY,
       },
       body: json,
     }).then((res) => {
@@ -493,7 +497,7 @@ class BenchMeta {
 }
 
 function init() {
-  if (!benchMeta && THEME_OPTIONS.metrics.collectMetrics) {
+  if (!benchMeta && collectMetrics) {
     benchMeta = new BenchMeta(); // This should be set in the gatsby-config of the site when enabling this plugin
 
     reportInfo(
@@ -508,12 +512,16 @@ function init() {
 process.on(`exit`, () => {
   if (benchMeta && !benchMeta.flushed && BENCHMARK_REPORTING_URL) {
     // This is probably already a non-zero exit as otherwise node should wait for the last promise to complete
-    reportError(
-      `[@] gatsby-plugin-newrelic: error`,
-      new Error(
-        `This is process.exit(); [@] gatsby-plugin-newrelic: MetricAPI collector has not completely flushed yet`
-      )
-    );
+    try {
+      benchMeta.flush();
+    } catch (error) {
+      reportError(
+        `[@] gatsby-plugin-newrelic: error`,
+        new Error(
+          `This is process.exit(); [@] gatsby-plugin-newrelic: MetricAPI collector has not completely flushed yet`
+        )
+      );
+    }
     process.stdout.write = originalStdoutWrite; // process.stderr.write = originalStderrWrite;
 
     process.exit(1);
@@ -521,32 +529,32 @@ process.on(`exit`, () => {
 });
 
 async function onPreInit(api) {
-  !THEME_OPTIONS.NR_INGEST_KEY &&
+  !NR_INGEST_KEY &&
     reportInfo(`[!] gatsby-plugin-newrelic: NR_INGEST_KEY not set`);
-  !THEME_OPTIONS.NR_LICENSE_KEY &&
+  !NR_LICENSE_KEY &&
     reportInfo(`[!] gatsby-plugin-newrelic: NR_LICENSE_KEY not set`);
-  !THEME_OPTIONS.traces.collectTraces &&
+  !collectTraces &&
     reportInfo("[!] gatsby-newrelic-plugin: Not collecting Traces");
-  !THEME_OPTIONS.logs?.collectLogs &&
+  !collectLogs &&
     reportInfo("[!] gatsby-newrelic-plugin: Not collecting Logs");
-  !THEME_OPTIONS.metrics.collectMetrics &&
+  !collectMetrics &&
     reportInfo("[!] gatsby-newrelic-plugin: Not collecting Metrics");
   lastApi = api;
   init(`preInit`);
-  THEME_OPTIONS.metrics.collectMetrics && benchMeta.markDataPoint(`preInit`);
+  collectMetrics && benchMeta.markDataPoint(`preInit`);
 }
 
 async function onPreBootstrap(api) {
   lastApi = api;
   init(`preBootstrap`);
-  THEME_OPTIONS.metrics.collectMetrics &&
+  collectMetrics &&
     benchMeta.markDataPoint(`preBootstrap`);
 }
 
 async function onPreBuild(api) {
   lastApi = api;
   init(`preBuild`);
-  THEME_OPTIONS.metrics.collectMetrics && benchMeta.markDataPoint(`preBuild`);
+  collectMetrics && benchMeta.markDataPoint(`preBuild`);
 }
 
 async function onPostBuild(api) {

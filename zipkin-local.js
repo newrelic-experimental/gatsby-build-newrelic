@@ -1,41 +1,40 @@
-"use strict";
 const _interopRequireDefault = require("@babel/runtime/helpers/interopRequireDefault");
 const {
-  THEME_OPTIONS,
+  PLUGIN_OPTIONS,
 } = require("gatsby-plugin-newrelic-test/utils/constants");
-const { getCiData } = require("./utils/getCiData");
-const ciAttributes = getCiData();
-exports.__esModule = true;
-exports.stop = exports.create = void 0;
-
+const getCiData = require("./utils/getCiData");
 const _zipkin = _interopRequireDefault(require("zipkin"));
-
 const _zipkinTransportHttp = require("zipkin-transport-newrelic");
-
 const _zipkinJavascriptOpentracing = _interopRequireDefault(
   require("zipkin-javascript-opentracing")
 );
 const _nodeFetch = _interopRequireDefault(require("node-fetch"));
-let logger;
-let recorder;
+const {now} = require('./utils/time');
+
+const ciAttributes = getCiData();
+
+let recorder, 
+    logger;
 /**
  * Create and return an open-tracing compatible tracer. See
  * https://github.com/opentracing/opentracing-javascript/blob/master/src/tracer.ts
  */
 
 const create = () => {
+  const { staging, NR_INGEST_KEY, traces: tags = {}, SITE_NAME } = PLUGIN_OPTIONS;
   logger = new _zipkinTransportHttp.HttpLogger({
-    // endpoint of local docker zipkin instance
     endpoint: `https://${
-      THEME_OPTIONS.staging ? `staging-` : ``
+      staging ? `staging-` : ``
     }trace-api.newrelic.com/trace/v1`,
+    jsonEncoder: _zipkin.jsonEncoder.JSON_V2,
+    httpInterval: 2000,
     headers: {
-      "Api-Key": THEME_OPTIONS.NR_INGEST_KEY,
+      "Api-Key": NR_INGEST_KEY,
       "Data-Format": "zipkin",
       "Data-Format-Version": 2,
-      options: THEME_OPTIONS,
+      options: PLUGIN_OPTIONS,
       tags: {
-        ...THEME_OPTIONS.traces.tags,
+        ...tags,
         ...ciAttributes,
       },
     },
@@ -45,85 +44,105 @@ const create = () => {
     // timeout = 60 hours, must be longer than site's build time
     timeout: 60 * 60 * 60 * 1000000,
   });
-  // console.log(recorder)
   const tracer = new _zipkinJavascriptOpentracing.default({
-    localServiceName: THEME_OPTIONS.SITE_NAME,
-    serviceName: THEME_OPTIONS.SITE_NAME,
+    localServiceName: SITE_NAME,
+    serviceName: SITE_NAME,
     sampler: new _zipkin.sampler.CountingSampler(1),
     traceId128Bit: true,
+    supportsJoin: true,
     recorder,
     kind: `client`,
   });
   return tracer;
 };
-exports.create = create;
-const _processQueue = async () => {
-  if (!THEME_OPTIONS.NR_INGEST_KEY || !THEME_OPTIONS.traces.collectTraces) {
-    return;
+
+const formatTrace = (trace) => {
+  const { SITE_NAME, traces: {tags} = {}, buildId } = PLUGIN_OPTIONS;
+  trace = JSON.parse(trace);
+  trace.localEndpoint = {};
+  trace.localEndpoint.serviceName = SITE_NAME;
+  if(!trace.tags) {
+    trace.tags = {};
   }
-  if (logger.queue.length > 0) {
-    const formattedQueue = logger.queue.map((trace) => {
-      const formatTrace = JSON.parse(trace);
-      formatTrace.localEndpoint = {};
-      formatTrace.localEndpoint.serviceName = THEME_OPTIONS.SITE_NAME;
-      formatTrace.tags = {};
-      if (formatTrace.annotations) {
-        delete formatTrace["annotations"];
-      }
-      if (formatTrace.binaryAnnotations) {
-        for (let anno of formatTrace.binaryAnnotations) {
-          formatTrace.tags[anno.key] = anno.value;
-        }
-        delete formatTrace["binaryAnnotations"];
-      }
-      if (formatTrace.name === "run-api") {
-        formatTrace.name += `: ${formatTrace.tags.api}`;
-      }
-      if (formatTrace.name === "run-plugin") {
-        formatTrace.name += `: ${formatTrace.tags.plugin}`;
-      }
-      const { tags } = THEME_OPTIONS.traces;
-      for (let tag in tags) {
-        formatTrace.tags[tag] = tags[tag];
-      }
-      formatTrace.tags.buildId = THEME_OPTIONS.buildId;
-      formatTrace.tags.gatsbySite = THEME_OPTIONS.SITE_NAME;
-      return JSON.stringify({
-        ...formatTrace,
-        ...THEME_OPTIONS.traces.tags,
-      });
-    });
+  if (trace.annotations) {
+    for (let anno of trace.annotations) {
+      trace.tags[anno.key] = anno.value;
+    }
+  }
+  if (trace.binaryAnnotations) {
+    for (let anno of trace.binaryAnnotations) {
+      trace.tags[anno.key] = anno.value;
+    }
+  }
+  if (trace.name === "run-api") {
+    trace.name += `: ${trace.tags.api}`;
+  }
+  if (trace.name === "run-plugin") {
+    trace.name += `: ${trace.tags.plugin}`;
+  }
+  trace.tags = {...trace.tags, ...tags};
+  trace.tags.thing = 'zipkin-local';
+  trace.tags.buildId = buildId;
+  return JSON.stringify(trace);
+}
 
-    const postBody = `[${formattedQueue.join(",")}]`;
+const sendTraceQueue = async (queue) => {
+  const { NR_INGEST_KEY } = PLUGIN_OPTIONS;
+  const response = await (0, _nodeFetch.default)(logger.endpoint, {
+    method: `POST`,
+    body: queue,
+    headers: {
+      "Content-Type": "application/json",
+      "Api-Key": NR_INGEST_KEY,
+      "Data-Format": "zipkin",
+      "Data-Format-Version": 2,
+    },
+  });
 
-    try {
-      const response = await (0, _nodeFetch.default)(logger.endpoint, {
-        method: `POST`,
-        body: postBody,
-        headers: {
-          "Content-Type": "application/json",
-          "Api-Key": THEME_OPTIONS.NR_INGEST_KEY,
-          "Data-Format": "zipkin",
-          "Data-Format-Version": 2,
-        },
-      });
-
-      if (response.status !== 202) {
-        const err =
-          `[@] gatsby-plugin-newrelic: Unexpected response while sending trace data, status:` +
-          `${response.status}, body: ${postBody}`;
-        if (logger.errorListenerSet) logger.emit(`error`, new Error(err));
-        else console.error(err);
-      }
-    } catch (error) {
-      const err = `[@] gatsby-plugin-newrelic: Error sending trace data ${error}`;
-      if (logger.errorListenerSet) logger.emit(`error`, new Error(err));
+  if (response.status >= 300) {
+    const err =
+      `[@] gatsby-plugin-newrelic: Unexpected response while sending trace data, status:` +
+      `${response.status}, body: ${postBody}`;
+    if (logger.errorListenerSet) {
+      logger.emit(`error`, new Error(err));
+    }
+    else {
       console.error(err);
     }
   }
+}
+
+const _processQueue = async () => {
+  const { NR_INGEST_KEY, traces: {collectTraces} = {collectTraces: true} } = PLUGIN_OPTIONS;
+  if (!NR_INGEST_KEY || !collectTraces || logger.queue.length <= 0) {
+    return;
+  }
+  try {
+    const formattedQueue = logger.queue.map(formatTrace);
+    const postBody = `[${formattedQueue.join(",")}]`;
+    await sendTraceQueue(postBody);
+  } catch (error) {
+    const err = `[@] gatsby-plugin-newrelic: Error sending trace data ${error}`;
+    if (logger.errorListenerSet) {
+      logger.emit(`error`, new Error(err));
+    }
+    console.error(err);
+  }
 };
 
+/**
+ * Run any tracer cleanup required before the node.js process
+ * exits. For Zipkin HTTP, we must manually process any spans still on
+ * the queue
+ */
 const stop = async () => {
+    // First, write all partial spans to the http logger
+  recorder.partialSpans.forEach((span, id) => {
+    if (span.timeoutTimestamp < now()) {
+      recorder._writeSpan(id);
+    }
+  }); // Then tell http logger to process all spans in its queue
   await _processQueue();
 };
-exports.stop = stop;
+
+module.exports = { create, stop };
