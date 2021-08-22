@@ -12,4 +12,3 @@ module.exports = {
   CI_NAME,
   BENCHMARK_REPORTING_URL,
 }
-  

@@ -1,67 +1,88 @@
 "use strict";
+
 const fs = require(`fs`);
 
-const { cpuCoreCount } = require("gatsby-core-utils");
-
-const coreCount = cpuCoreCount();
+const {
+  cpuCoreCount
+} = require("gatsby-core-utils");
 
 const {
   PLUGIN_OPTIONS,
   CI_NAME,
-  BENCHMARK_REPORTING_URL,
+  BENCHMARK_REPORTING_URL
 } = require("gatsby-plugin-newrelic-test/utils/constants");
 
 const NewrelicLogs = require("winston-to-newrelic-logs");
 
 const winston = require("winston");
-const { execToStr, execToInt } = require("./utils/execTo");
+
+const {
+  execToStr,
+  execToInt
+} = require("./utils/execTo");
+
 const getCiData = require("./utils/getCiData");
 
-const { performance } = require(`perf_hooks`);
+const {
+  performance
+} = require(`perf_hooks`);
 
-const { sync: glob } = require(`fast-glob`);
+const {
+  sync: glob
+} = require(`fast-glob`);
 
 const nodeFetch = require(`node-fetch`);
 
+const coreCount = cpuCoreCount();
+
+const isString = x => typeof x === "string";
+
 let DELETED_PAGES,
-  CHANGED_PAGES,
-  CLEARING_CACHE = false,
-  LOGS_STARTED = false;
-const { 
-  NR_LICENSE_KEY, 
+    CHANGED_PAGES,
+    CLEARING_CACHE = false,
+    LOGS_STARTED = false;
+const {
+  NR_LICENSE_KEY,
   NR_INGEST_KEY,
   staging,
-  logs: {collectLogs} = {collectLogs: true},
-  traces: {collectTraces} = {collectTraces: true},
-  metrics: {collectMetrics} = {collectMetrics: true},
-  metrics = {},
-} = PLUGIN_OPTIONS;
-// Create a logger instance
+  logs: {
+    collectLogs
+  } = {
+    collectLogs: true
+  },
+  traces: {
+    collectTraces
+  } = {
+    collectTraces: true
+  },
+  metrics: {
+    collectMetrics
+  } = {
+    collectMetrics: true
+  },
+  metrics = {}
+} = PLUGIN_OPTIONS; // Create a logger instance
+// process.stdout._handle.setBlocking(true);
 const winstonLogger = winston.createLogger({
-  transports: [
-    new NewrelicLogs({
-      licenseKey: NR_LICENSE_KEY,
-      apiUrl: `https://${
-        staging ? `staging-` : ``
-      }log-api.newrelic.com`,
-      pluginOptions: PLUGIN_OPTIONS,
-    }),
-  ],
+  transports: [new NewrelicLogs({
+    licenseKey: NR_LICENSE_KEY,
+    apiUrl: `https://${staging ? `staging-` : ``}log-api.newrelic.com`,
+    pluginOptions: PLUGIN_OPTIONS
+  })],
 });
 
 if (NR_LICENSE_KEY && collectLogs) {
   !LOGS_STARTED && console.log(`[@] gatsby-plugin-newrelic: Streaming logs`);
   LOGS_STARTED = true;
   const originalStdoutWrite = process.stdout.write.bind(process.stdout);
-  // Remove loading braille characters from log strings
-  const brailleRegex = /⠋|⠙|⠹|⠸|⠼|⠴|⠦|⠧|⠇|⠏|\n/g;
-  // Remove ANSI escape codes from log string
-  const regex =
-    /[\u001b\u009b][[()#;?]*(?:[0-9]{1,4}(?:;[0-9]{0,4})*)?[0-9A-ORZcf-nqry=><]/g;
+  const originalStderrWrite = process.stderr.write.bind(process.stderr); // Remove loading braille characters from log strings
+
+  const brailleRegex = /⠋|⠙|⠹|⠸|⠼|⠴|⠦|⠧|⠇|⠏|\n/g; // Remove ANSI escape codes from log string
+
+  const regex = /[\u001b\u009b][[()#;?]*(?:[0-9]{1,4}(?:;[0-9]{0,4})*)?[0-9A-ORZcf-nqry=><]/g;
   const deletedPagesRegex = /Deleted (.*?) pages/g;
   const changedPagesRegex = /Found (.*?) changed pages/g;
-  const clearingCache = `we're deleting your site's cache`;
-  // Only log repeated messages once
+  const clearingCache = `we're deleting your site's cache`; // Only log repeated messages once
   // const ALREADY_LOGGED = {
   //   "source and transform nodes": false,
   //   "building schema": false,
@@ -80,16 +101,9 @@ if (NR_LICENSE_KEY && collectLogs) {
   // };
 
   process.stdout.write = (chunk, encoding, callback) => {
-    let copyChunk = chunk;
-
-    if (typeof copyChunk === "string") {
+    if (isString(chunk)) {
       try {
-        copyChunk = copyChunk
-          .replace(regex, "")
-          .replace(brailleRegex, "")
-          .trimStart();
-
-        // if (Object.keys(ALREADY_LOGGED).includes(copyChunk)) {
+        const copyChunk = chunk.replace(regex, "").replace(brailleRegex, "").trimStart(); // if (Object.keys(ALREADY_LOGGED).includes(copyChunk)) {
         //   if (ALREADY_LOGGED[copyChunk]) {
         //     return originalStdoutWrite(chunk, encoding, callback);
         //   } else {
@@ -97,8 +111,8 @@ if (NR_LICENSE_KEY && collectLogs) {
         //   }
         // }
 
-        let deletedPages = deletedPagesRegex.exec(copyChunk);
-        let changedPages = changedPagesRegex.exec(copyChunk);
+        const deletedPages = deletedPagesRegex.exec(copyChunk);
+        const changedPages = changedPagesRegex.exec(copyChunk);
 
         if (deletedPages) {
           DELETED_PAGES = deletedPages[1];
@@ -115,13 +129,13 @@ if (NR_LICENSE_KEY && collectLogs) {
         if (copyChunk !== "") {
           winstonLogger.log({
             level: "info",
-            message: copyChunk,
+            message: copyChunk
           });
         }
       } catch (err) {
         winstonLogger.log({
           level: "error",
-          message: err.message,
+          message: err.message
         });
       }
     }
@@ -129,46 +143,44 @@ if (NR_LICENSE_KEY && collectLogs) {
     return originalStdoutWrite(chunk, encoding, callback);
   };
 
-  console.error = function (msg) {
-    winstonLogger.log({
-      level: "error",
-      message: msg,
-    });
-  };
+  process.stderr.write = (chunk, encoding, callback) => {
+    if (isString(chunk)) {
+      try {
+        const copyChunk = chunk.replace(regex, "").replace(brailleRegex, "").trimStart(); // if (Object.keys(ALREADY_LOGGED).includes(copyChunk)) {
 
-  console.warn = function (msg) {
-    //
-    winstonLogger.log({
-      level: "warn",
-      message: msg,
-    });
+        if (copyChunk !== "") {
+          winstonLogger.log({
+            level: "error",
+            message: copyChunk
+          });
+        }
+      } catch (err) {
+        winstonLogger.log({
+          level: "error",
+          message: err.message
+        });
+      }
+    }
+    return originalStderrWrite(chunk, encoding, callback);
   };
 }
-
-const bootstrapTime = performance.now();
-let lastApi; // Current benchmark state, if any. If none then create one on next lifecycle.
 
 let benchMeta;
-let nextBuildType = process.env.BENCHMARK_BUILD_TYPE ?? `initial`;
-
-function reportInfo(...args) {
-  (lastApi ? lastApi.reporter : console).info(...args);
-}
-
-function reportError(...args) {
-  (lastApi ? lastApi.reporter : console).error(...args);
-}
+let nextBuildType = process.env.BENCHMARK_BUILD_TYPE ? process.env.BENCHMARK_BUILD_TYPE : `initial`;
 
 class BenchMeta {
   constructor() {
     this.flushing = undefined; // Promise of flushing if that has started
 
+    this.lastApi = undefined; // Current benchmark state, if any. If none then create one on next lifecycle.
+
     this.flushed = false; // Completed flushing?
 
     this.localTime = new Date().toISOString();
+    this.netlifyHook = CI_NAME === "netlify" && process.env.INCOMMING_HOOK_BODY;
     this.timestamps = {
       // TODO: we should also have access to node's timing data and see how long it took before bootstrapping this script
-      bootstrapTime,
+      bootstrapTime: performance.now(),
       // Start of this file
       instantiationTime: performance.now(),
       // Instantiation time of this class
@@ -182,96 +194,84 @@ class BenchMeta {
       // Gatsby onPreBuild life cycle
       postBuild: 0,
       // Gatsby onPostBuild life cycle
-      benchmarkEnd: 0, // End of benchmark itself
+      benchmarkEnd: 0 // End of benchmark itself
+
     };
     this.started = false;
   }
 
-  getMetadata() {
+  reportError(...args) {
+    (this.lastApi ? this.lastApi.reporter : console).error(...args);
+  }
+
+  reportInfo(...args) {
+    (this.lastApi ? this.lastApi.reporter : console).info(...args);
+  }
+
+  getSiteId() {
     let siteId = ``;
 
     try {
-      siteId =
-        JSON.parse(process.env?.GATSBY_TELEMETRY_TAGS ?? `{}`)?.siteId ?? ``;
+      if (process.env.GATSBY_TELEMETRY_TAGS) {
+        siteId = JSON.parse(process.env.GATSBY_TELEMETRY_TAGS).siteId;
+      }
     } catch (e) {
       siteId = `error`;
-      reportInfo(
-        `[@] gatsby-plugin-newrelic: Suppressed an error trying to JSON.parse(GATSBY_TELEMETRY_TAGS): ${e}`
-      );
+      this.reportInfo(`[@] gatsby-plugin-newrelic: Suppressed an error trying to JSON.parse(GATSBY_TELEMETRY_TAGS): ${e}`);
     }
+
+    return siteId;
+  }
+
+  getBuildType() {
     /**
      * If we are running in netlify, environment variables can be attached using the INCOMING_HOOK_BODY
      * extract the configuration from there
      */
-
     let buildType = nextBuildType;
-    nextBuildType = process.env.BENCHMARK_BUILD_TYPE_NEXT ?? `DATA_UPDATE`;
-    const incomingHookBodyEnv = process.env.INCOMING_HOOK_BODY;
+    nextBuildType = process.env.BENCHMARK_BUILD_TYPE_NEXT ? process.env.BENCHMARK_BUILD_TYPE_NEXT : `DATA_UPDATE`;
 
-    if (CI_NAME === `netlify` && incomingHookBodyEnv) {
+    if (this.netlifyHook) {
       try {
         const incomingHookBody = JSON.parse(incomingHookBodyEnv);
         buildType = incomingHookBody && incomingHookBody.buildType;
       } catch (e) {
-        reportInfo(
-          `[@] gatsby-plugin-newrelic: Suppressed an error trying to JSON.parse(INCOMING_HOOK_BODY): ${e}`
-        );
+        this.reportInfo(`[@] gatsby-plugin-newrelic: Suppressed an error trying to JSON.parse(INCOMING_HOOK_BODY): ${e}`);
       }
     }
 
+    return buildType;
+  }
+
+  getMetadata() {
+    const siteId = this.getSiteId();
+    const buildType = this.getBuildType();
     return {
       siteId,
-      buildType,
+      buildType
     };
   }
 
-  getData() {
-    const { rss, heapTotal, heapUsed, external } = process.memoryUsage();
-
-    for (const key in this.timestamps) {
-      this.timestamps[key] = Math.floor(this.timestamps[key]);
-    } // For the time being, our target benchmarks are part of the main repo
-    // And we will want to know what version of the repo we're testing with
-    // This won't work as intended when running a site not in our repo (!)
+  getAttributes() {
+    const benchmarkMetadata = this.getMetadata();
     const ciAttributes = getCiData();
-
     const gitHash = execToStr(`git rev-parse HEAD`); // Git only supports UTC tz through env var, but the unix time stamp is UTC
+
     const gitAuthor = execToStr(`git show ${gitHash} | grep Author`);
     const gitRepoName = execToStr("basename `git rev-parse --show-toplevel`");
     const unixStamp = execToStr(`git show --quiet --date=unix --format="%cd"`);
-    const gitCommitTimestamp = new Date(
-      parseInt(unixStamp, 10) * 1000
-    ).toISOString();
+    const gitCommitTimestamp = new Date(parseInt(unixStamp, 10) * 1000).toISOString();
     const nodeEnv = process.env.NODE_ENV || "n/a";
     const nodejsVersion = process.version;
     const gatsbyCliVersion = execToStr(`node_modules/.bin/gatsby --version`);
+
     const gatsbyVersion = require(`gatsby/package.json`).version;
-    const sharpVersion = fs.existsSync(`node_modules/sharp/package.json`)
-      ? require(`sharp/package.json`).version
-      : `none`;
+
+    const sharpVersion = fs.existsSync(`node_modules/sharp/package.json`) ? require(`sharp/package.json`).version : `none`;
+
     const webpackVersion = require(`webpack/package.json`).version;
-    const publicJsSize = glob(`public/*.js`).reduce(
-      (t, file) => t + fs.statSync(file).size,
-      0
-    );
-    const mdxCount = execToInt(
-      `find public .cache  -type f -iname "*.mdx" | wc -l`
-    );
-    const jpgCount = execToInt(
-      `find public .cache  -type f -iname "*.jpg" -or -iname "*.jpeg" | wc -l`
-    );
-    const pngCount = execToInt(
-      `find public .cache  -type f -iname "*.png" | wc -l`
-    );
-    const gifCount = execToInt(
-      `find public .cache  -type f -iname "*.gif" | wc -l`
-    );
-    const otherImagesCount = execToInt(
-      `find public .cache  -type f -iname "*.bmp" -or -iname "*.tif" -or -iname "*.webp" -or -iname "*.svg" | wc -l`
-    );
-    const benchmarkMetadata = this.getMetadata();
-    const attributes = {
-      ...ciAttributes,
+
+    return { ...ciAttributes,
       ...benchmarkMetadata,
       ...metrics.tags,
       gatsbySite: PLUGIN_OPTIONS.SITE_NAME,
@@ -291,119 +291,88 @@ class BenchMeta {
       coreCount: coreCount,
       deletedPages: DELETED_PAGES,
       changedPages: CHANGED_PAGES,
-      clearedCache: CLEARING_CACHE,
+      clearedCache: CLEARING_CACHE
     };
-    const buildtimes = {
-      ...attributes,
-      bootstrapTime: this.timestamps.bootstrapTime,
-      instantiationTime: this.timestamps.instantiationTime,
-      // Instantiation time of this class
-      benchmarkStart: this.timestamps.benchmarkStart,
-      // Start of benchmark itself
-      preInit: this.timestamps.preInit,
-      // Gatsby onPreInit life cycle
-      preBootstrap: this.timestamps.preBootstrap,
-      // Gatsby onPreBootstrap life cycle
-      preBuild: this.timestamps.preBuild,
-      // Gatsby onPreBuild life cycle
-      postBuild: this.timestamps.postBuild,
-      // Gatsby onPostBuild life cycle
-      benchmarkEnd: this.timestamps.benchmarkEnd, // End of benchmark itself
-    };
+  }
+
+  getData() {
+    const {
+      rss,
+      heapTotal,
+      heapUsed,
+      external
+    } = process.memoryUsage();
+    const attributes = this.getAttributes();
+
+    for (const key in this.timestamps) {
+      this.timestamps[key] = Math.floor(this.timestamps[key]);
+    } // For the time being, our target benchmarks are part of the main repo
+    // And we will want to know what version of the repo we're testing with
+
+
+    const publicJsSize = glob(`public/*.js`).reduce((t, file) => t + fs.statSync(file).size, 0);
+    const mdxCount = execToInt(`find public .cache  -type f -iname "*.mdx" | wc -l`);
+    const jpgCount = execToInt(`find public .cache  -type f -iname "*.jpg" -or -iname "*.jpeg" | wc -l`);
+    const pngCount = execToInt(`find public .cache  -type f -iname "*.png" | wc -l`);
+    const gifCount = execToInt(`find public .cache  -type f -iname "*.gif" | wc -l`);
+    const otherImagesCount = execToInt(`find public .cache  -type f -iname "*.bmp" -or -iname "*.tif" -or -iname "*.webp" -or -iname "*.svg" | wc -l`);
     var timestamp = Date.now();
-    const timeelapsed =
-      this.timestamps.benchmarkEnd - this.timestamps.benchmarkStart;
-    return [
-      {
-        metrics: [
-          {
-            name: "mdxFiles",
-            type: "gauge",
-            value: mdxCount,
-            timestamp: timestamp,
-            attributes: attributes,
-          },
-          {
-            name: "jsSize",
-            type: "gauge",
-            value: publicJsSize,
-            timestamp: timestamp,
-            attributes: attributes,
-          },
-          {
-            name: "pngs",
-            type: "gauge",
-            value: pngCount,
-            timestamp: timestamp,
-            attributes: attributes,
-          },
-          {
-            name: "jpgs",
-            type: "gauge",
-            value: jpgCount,
-            timestamp: timestamp,
-            attributes: attributes,
-          },
-          {
-            name: "otherImages",
-            type: "gauge",
-            value: otherImagesCount,
-            timestamp: timestamp,
-            attributes: attributes,
-          },
-          {
-            name: "gifs",
-            type: "gauge",
-            value: gifCount,
-            timestamp: timestamp,
-            attributes: attributes,
-          },
-          {
-            name: "memory-rss",
-            type: "gauge",
-            value: rss !== null && rss !== void 0 ? rss : 0,
-            timestamp: timestamp,
-            attributes: attributes,
-          },
-          {
-            name: "memory-heapTotal",
-            type: "gauge",
-            value: heapTotal !== null && heapTotal !== void 0 ? heapTotal : 0,
-            timestamp: timestamp,
-            attributes: attributes,
-          },
-          {
-            name: "memory-heapUsed",
-            type: "gauge",
-            value: heapUsed !== null && heapUsed !== void 0 ? heapUsed : 0,
-            timestamp: timestamp,
-            attributes: attributes,
-          },
-          {
-            name: "memory-external",
-            type: "gauge",
-            value: external !== null && external !== void 0 ? external : 0,
-            timestamp: timestamp,
-            attributes: attributes,
-          },
-          {
-            name: "build-times",
-            type: "gauge",
-            value: timeelapsed,
-            timestamp: timestamp,
-            attributes: buildtimes,
-          },
-        ],
-      },
-    ];
+    const timeelapsed = this.timestamps.benchmarkEnd - this.timestamps.benchmarkStart;
+    const buildtimes = {
+      type: "gauge",
+      timestamp,
+      name: "build-times",
+      value: timeelapsed,
+      attributes: { ...attributes,
+        ...this.timestamps
+      }
+    };
+    const baseMetric = {
+      type: "gauge",
+      timestamp,
+      attributes
+    };
+    const finalMetrics = [{
+      name: "mdxFiles",
+      value: mdxCount
+    }, {
+      name: "jsSize",
+      value: publicJsSize
+    }, {
+      name: "pngs",
+      value: pngCount
+    }, {
+      name: "jpgs",
+      value: jpgCount
+    }, {
+      name: "otherImages",
+      value: otherImagesCount
+    }, {
+      name: "gifs",
+      value: gifCount
+    }, {
+      name: "memory-rss",
+      value: rss ? rss : 0
+    }, {
+      name: "memory-heapTotal",
+      value: heapTotal ? heapTotal : 0
+    }, {
+      name: "memory-heapUsed",
+      value: heapUsed ? heapUsed : 0
+    }, {
+      name: "memory-external",
+      value: external ? external : 0
+    }].map(metric => ({ ...baseMetric,
+      ...metric
+    }));
+    return [{
+      metrics: [...finalMetrics, buildtimes]
+    }];
   }
 
   markStart() {
     if (this.started) {
-      reportError(
-        `[@] gatsby-plugin-newrelic: `,
-        new Error(`Error: Should not call markStart() more than once`)
-      );
+      this.reportError(`[@] gatsby-plugin-newrelic: `, new Error(`Error: Should not call markStart() more than once`));
       process.exit(1);
     }
 
@@ -411,12 +380,12 @@ class BenchMeta {
     this.started = true;
   }
 
-  markDataPoint(name) {
+  markDataPoint(name, api) {
+    this.lastApi = api;
+
     if (BENCHMARK_REPORTING_URL) {
       if (!(name in this.timestamps)) {
-        reportError(
-          `[@] gatsby-plugin-newrelic: Attempted to record a timestamp with a name (\`${name}\`) that wasn't expected`
-        );
+        this.reportError(`[@] gatsby-plugin-newrelic: Attempted to record a timestamp with a name (\`${name}\`) that wasn't expected`);
         process.exit(1);
       }
     }
@@ -426,10 +395,7 @@ class BenchMeta {
 
   async markEnd() {
     if (!this.timestamps.benchmarkStart) {
-      reportError(
-        `[@] gatsby-plugin-newrelic:`,
-        new Error(`Error: Should not call markEnd() before calling markStart()`)
-      );
+      this.reportError(`[@] gatsby-plugin-newrelic:`, new Error(`Error: Should not call markEnd() before calling markStart()`));
       process.exit(1);
     }
 
@@ -442,69 +408,46 @@ class BenchMeta {
     const json = JSON.stringify(data, null, 2);
 
     if (!BENCHMARK_REPORTING_URL) {
-      reportInfo(
-        `[@] gatsby-plugin-newrelic: MetricAPI BENCHMARK_REPORTING_URL not set, not submitting data`
-      );
+      this.reportInfo(`[@] gatsby-plugin-newrelic: MetricAPI BENCHMARK_REPORTING_URL not set, not submitting data`);
       this.flushed = true;
-      return (this.flushing = Promise.resolve());
+      return this.flushing = Promise.resolve();
     }
+
     if (!NR_INGEST_KEY) {
       console.log(`[!] gatsby-plugin-newrelic: NR_INGEST_KEY not set`);
       this.flushed = true;
-      return (this.flushing = Promise.resolve());
+      return this.flushing = Promise.resolve();
     }
 
-    reportInfo(
-      `[@] gatsby-plugin-newrelic: Flushing benchmark data to remote server...`
-    );
-    let lastStatus = 0;
-    this.flushing = nodeFetch(`${BENCHMARK_REPORTING_URL}`, {
+    this.reportInfo(`[@] gatsby-plugin-newrelic: Flushing benchmark data to remote server...`);
+    const res = await nodeFetch(`${BENCHMARK_REPORTING_URL}`, {
       method: `POST`,
       headers: {
         "content-type": `application/json`,
-        "Api-Key": NR_INGEST_KEY,
+        "Api-Key": NR_INGEST_KEY
       },
-      body: json,
-    }).then((res) => {
-      lastStatus = res.status;
-
-      if ([401, 500].includes(lastStatus)) {
-        reportInfo(
-          `[@] gatsby-plugin-newrelic: MetricAPI got ${lastStatus} response, waiting for text`
-        );
-        res.text().then((content) => {
-          reportError(
-            `[@] gatsby-plugin-newrelic: Response error`,
-            new Error(
-              `MetricAPI responded with a ${lastStatus} error: ${content}`
-            )
-          );
-          process.exit(1);
-        });
-      }
-
-      this.flushed = true; // Note: res.text returns a promise
-
-      return res.text();
+      body: json
     });
-    this.flushing.then((text) =>
-      reportInfo(
-        `[@] gatsby-plugin-newrelic: MetricAPI response: ${lastStatus}: ${text}`
-      )
-    );
-    return this.flushing;
+    const content = await res.text();
+
+    if ([401, 500].includes(res.status)) {
+      this.reportError(`[@] gatsby-plugin-newrelic: Response error`, new Error(`MetricAPI responded with a ${res.status} error: ${content}`));
+    } else {
+      this.reportInfo(`[@] gatsby-plugin-newrelic: MetricAPI response: ${res.status}: ${content}`);
+    }
+
+    this.flushed = true; // Note: res.text returns a promise
+
+    return content;
   }
+
 }
 
 function init() {
   if (!benchMeta && collectMetrics) {
     benchMeta = new BenchMeta(); // This should be set in the gatsby-config of the site when enabling this plugin
 
-    reportInfo(
-      `[@] gatsby-plugin-newrelic: Will post benchmark data to: ${
-        BENCHMARK_REPORTING_URL || `the CLI`
-      }`
-    );
+    benchMeta.reportInfo(`[@] gatsby-plugin-newrelic: Will post benchmark data to: ${BENCHMARK_REPORTING_URL || `the CLI`}`);
     benchMeta.markStart();
   }
 }
@@ -515,46 +458,33 @@ process.on(`exit`, () => {
     try {
       benchMeta.flush();
     } catch (error) {
-      reportError(
-        `[@] gatsby-plugin-newrelic: error`,
-        new Error(
-          `This is process.exit(); [@] gatsby-plugin-newrelic: MetricAPI collector has not completely flushed yet`
-        )
-      );
+      benchMeta.reportError(`[@] gatsby-plugin-newrelic: error`, new Error(`This is process.exit(); [@] gatsby-plugin-newrelic: MetricAPI collector has not completely flushed yet`));
     }
-    process.stdout.write = originalStdoutWrite; // process.stderr.write = originalStderrWrite;
 
+    process.stdout.write = originalStdoutWrite;
+    process.stderr.write = originalStderrWrite;
     process.exit(1);
   }
 });
 
 async function onPreInit(api) {
-  !NR_INGEST_KEY &&
-    reportInfo(`[!] gatsby-plugin-newrelic: NR_INGEST_KEY not set`);
-  !NR_LICENSE_KEY &&
-    reportInfo(`[!] gatsby-plugin-newrelic: NR_LICENSE_KEY not set`);
-  !collectTraces &&
-    reportInfo("[!] gatsby-newrelic-plugin: Not collecting Traces");
-  !collectLogs &&
-    reportInfo("[!] gatsby-newrelic-plugin: Not collecting Logs");
-  !collectMetrics &&
-    reportInfo("[!] gatsby-newrelic-plugin: Not collecting Metrics");
-  lastApi = api;
+  !NR_INGEST_KEY && benchMeta.reportInfo(`[!] gatsby-plugin-newrelic: NR_INGEST_KEY not set`);
+  !NR_LICENSE_KEY && benchMeta.reportInfo(`[!] gatsby-plugin-newrelic: NR_LICENSE_KEY not set`);
+  !collectTraces && benchMeta.reportInfo("[!] gatsby-newrelic-plugin: Not collecting Traces");
+  !collectLogs && benchMeta.reportInfo("[!] gatsby-newrelic-plugin: Not collecting Logs");
+  !collectMetrics && benchMeta.reportInfo("[!] gatsby-newrelic-plugin: Not collecting Metrics");
   init(`preInit`);
-  collectMetrics && benchMeta.markDataPoint(`preInit`);
+  collectMetrics && benchMeta.markDataPoint(`preInit`, api);
 }
 
 async function onPreBootstrap(api) {
-  lastApi = api;
   init(`preBootstrap`);
-  collectMetrics &&
-    benchMeta.markDataPoint(`preBootstrap`);
+  collectMetrics && benchMeta.markDataPoint(`preBootstrap`, api);
 }
 
 async function onPreBuild(api) {
-  lastApi = api;
   init(`preBuild`);
-  collectMetrics && benchMeta.markDataPoint(`preBuild`);
+  collectMetrics && benchMeta.markDataPoint(`preBuild`, api);
 }
 
 async function onPostBuild(api) {
@@ -563,8 +493,7 @@ async function onPostBuild(api) {
     return;
   }
 
-  lastApi = api;
-  benchMeta.markDataPoint(`postBuild`);
+  benchMeta.markDataPoint(`postBuild`, api);
   await benchMeta.markEnd();
   benchMeta = undefined;
 }
@@ -573,5 +502,5 @@ module.exports = {
   onPreInit,
   onPreBootstrap,
   onPreBuild,
-  onPostBuild,
+  onPostBuild
 };

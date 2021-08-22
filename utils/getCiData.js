@@ -1,4 +1,6 @@
 const { execToStr } = require('./execTo');
+const gitRepoUrl = execToStr(`git config --get remote.origin.url`);
+const gitCommit = execToStr(`git log --format="%H" -n 1`);
 
 const getCiData = () => {
   switch (true) {
@@ -34,15 +36,15 @@ const getCiData = () => {
       };
     case process.env.GATSBY_CLOUD:
       return {
-        gitRepoUrl: execToStr(`git config --get remote.origin.url`),
+        gitRepoUrl,
         gitBranch: process.env.BRANCH,
         gatsbyIsPreview: process.env.GATSBY_IS_PREVIEW,
-        gitCommit: execToStr(`git log --format="%H" -n 1`)
+        gitCommit,
       };
     default:
       return {
-        gitRepoUrl: execToStr(`git config --get remote.origin.url`),
-        gitCommit: execToStr(`git log --format="%H" -n 1`),
+        gitRepoUrl,
+        gitCommit,
         gitBranch: execToStr(`git branch --show-current`)
       };
   }

@@ -12,6 +12,7 @@ const _nodeFetch = _interopRequireDefault(require("node-fetch"));
 const {now} = require('./utils/time');
 
 const ciAttributes = getCiData();
+const TIMEOUT_LENGTH = 60 * 60 * 60 * 1000000;
 
 let recorder, 
     logger;
@@ -27,7 +28,7 @@ const create = () => {
       staging ? `staging-` : ``
     }trace-api.newrelic.com/trace/v1`,
     jsonEncoder: _zipkin.jsonEncoder.JSON_V2,
-    httpInterval: 2000,
+    httpInterval: 500,
     headers: {
       "Api-Key": NR_INGEST_KEY,
       "Data-Format": "zipkin",
@@ -42,7 +43,7 @@ const create = () => {
   recorder = new _zipkin.BatchRecorder({
     logger,
     // timeout = 60 hours, must be longer than site's build time
-    timeout: 60 * 60 * 60 * 1000000,
+    timeout: TIMEOUT_LENGTH,
   });
   const tracer = new _zipkinJavascriptOpentracing.default({
     localServiceName: SITE_NAME,
@@ -64,11 +65,6 @@ const formatTrace = (trace) => {
   if(!trace.tags) {
     trace.tags = {};
   }
-  if (trace.annotations) {
-    for (let anno of trace.annotations) {
-      trace.tags[anno.key] = anno.value;
-    }
-  }
   if (trace.binaryAnnotations) {
     for (let anno of trace.binaryAnnotations) {
       trace.tags[anno.key] = anno.value;
@@ -81,7 +77,6 @@ const formatTrace = (trace) => {
     trace.name += `: ${trace.tags.plugin}`;
   }
   trace.tags = {...trace.tags, ...tags};
-  trace.tags.thing = 'zipkin-local';
   trace.tags.buildId = buildId;
   return JSON.stringify(trace);
 }

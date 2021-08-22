@@ -16,9 +16,6 @@ const execToStr = (cmd) => {
 }
 
 const execToInt = (cmd) => {
-  // `parseInt` can return `NaN` for unexpected args
-  // `Number` can return undefined for unexpected args
-  // `0 | x` (bitwise or) will always return 0 for unexpected args, or 32bit int
   try {
     const resultString = execToStr(cmd);
 
