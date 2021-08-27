@@ -23,8 +23,36 @@ export NEW_RELIC_HOME='./node_modules/gatsby-plugin-newrelic-test'
 ```
 
 ## Usage
->[**Optional** - Include more thorough instructions on how to use the software. This section might not be needed if the Getting Started section is enough. Remove this section if it's not needed.]
+In `gatsby-config.js`, add the following code snippet to configure the plugin
 
+```javascript
+    {
+      resolve: "gatsby-plugin-newrelic-test",
+      options: {
+        NR_INGEST_KEY: "INSERT INGEST KEY",
+        NR_LICENSE_KEY: "INSERT LICNESE KEY",
+        SITE_NAME: "your-website-name",
+        traces: {
+          collectTraces: true,
+          tags: {
+            "daniel": "kim"
+          },
+        },
+        logs: {
+          collectLogs: true,
+          tags: {
+            "ruairi": "douglas"
+          },
+        },
+        metrics: {
+          collectMetrics: true,
+          tags: {
+            "ruairi": "douglas"
+          },
+        },
+      },
+    },
+```
 
 ## Building
 
