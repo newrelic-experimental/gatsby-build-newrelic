@@ -23,7 +23,8 @@ const getCiData = () => {
         deployId: process.env.DEPLOY_ID,
         ciSiteName: process.env.SITE_NAME,
         ciSiteId: process.env.SITE_ID,
-        netlifyImagesCdnDomain: process.env.NETLIFY_IMAGES_CDN_DOMAIN
+        netlifyImagesCdnDomain: process.env.NETLIFY_IMAGES_CDN_DOMAIN,
+        ciName: 'Netlify',
       };
     case process.env.VERCEL:
       return {
@@ -32,7 +33,8 @@ const getCiData = () => {
         gitCommit: process.env.GATSBY_VERCEL_GIT_COMMIT_SHA,
         context: process.env.GATSBY_VERCEL_ENV,
         deployUrl: process.env.GATSBY_VERCEL_URL,
-        deployRegion: process.env.GATSBY_VERCEL_REGION
+        deployRegion: process.env.GATSBY_VERCEL_REGION,
+        ciName: 'Vercel',
       };
     case process.env.GATSBY_CLOUD:
       return {
@@ -40,12 +42,14 @@ const getCiData = () => {
         gitBranch: process.env.BRANCH,
         gatsbyIsPreview: process.env.GATSBY_IS_PREVIEW,
         gitCommit,
+        ciName: 'Gatsby Cloud',
       };
     default:
       return {
         gitRepoUrl,
         gitCommit,
-        gitBranch: execToStr(`git branch --show-current`)
+        gitBranch: execToStr(`git branch --show-current`),
+        ciName: 'local',
       };
   }
 };

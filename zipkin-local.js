@@ -22,20 +22,20 @@ let recorder,
  */
 
 const create = () => {
-  const { staging, NR_INGEST_KEY, traces: tags = {}, SITE_NAME } = PLUGIN_OPTIONS;
+  const { staging, NR_INGEST_KEY, customTags = {}, SITE_NAME } = PLUGIN_OPTIONS;
   logger = new _zipkinTransportHttp.HttpLogger({
     endpoint: `https://${
       staging ? `staging-` : ``
     }trace-api.newrelic.com/trace/v1`,
     jsonEncoder: _zipkin.jsonEncoder.JSON_V2,
-    httpInterval: 500,
+    httpInterval: 100,
     headers: {
       "Api-Key": NR_INGEST_KEY,
       "Data-Format": "zipkin",
       "Data-Format-Version": 2,
       options: PLUGIN_OPTIONS,
       tags: {
-        ...tags,
+        ...customTags,
         ...ciAttributes,
       },
     },
@@ -58,7 +58,7 @@ const create = () => {
 };
 
 const formatTrace = (trace) => {
-  const { SITE_NAME, traces: {tags} = {}, buildId } = PLUGIN_OPTIONS;
+  const { SITE_NAME, customTags = {}, buildId } = PLUGIN_OPTIONS;
   trace = JSON.parse(trace);
   trace.localEndpoint = {};
   trace.localEndpoint.serviceName = SITE_NAME;
@@ -76,7 +76,7 @@ const formatTrace = (trace) => {
   if (trace.name === "run-plugin") {
     trace.name += `: ${trace.tags.plugin}`;
   }
-  trace.tags = {...trace.tags, ...tags};
+  trace.tags = {...trace.tags, ...customTags};
   trace.tags.buildId = buildId;
   return JSON.stringify(trace);
 }
@@ -97,7 +97,7 @@ const sendTraceQueue = async (queue) => {
   if (response.status >= 300) {
     const err =
       `[@] gatsby-plugin-newrelic: Unexpected response while sending trace data, status:` +
-      `${response.status}, body: ${postBody}`;
+      `${response.status}`;
     if (logger.errorListenerSet) {
       logger.emit(`error`, new Error(err));
     }
@@ -108,7 +108,7 @@ const sendTraceQueue = async (queue) => {
 }
 
 const _processQueue = async () => {
-  const { NR_INGEST_KEY, traces: {collectTraces} = {collectTraces: true} } = PLUGIN_OPTIONS;
+  const { NR_INGEST_KEY, collectTraces = true} = PLUGIN_OPTIONS;
   if (!NR_INGEST_KEY || !collectTraces || logger.queue.length <= 0) {
     return;
   }

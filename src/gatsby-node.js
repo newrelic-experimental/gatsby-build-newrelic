@@ -8,7 +8,6 @@ const {
 
 const {
   PLUGIN_OPTIONS,
-  CI_NAME,
   BENCHMARK_REPORTING_URL
 } = require("gatsby-plugin-newrelic-test/utils/constants");
 
@@ -32,7 +31,7 @@ const {
 } = require(`fast-glob`);
 
 const nodeFetch = require(`node-fetch`);
-
+const { processFile, postEvents, collectBundleJson } = require(`./utils/parseJson`);
 const coreCount = cpuCoreCount();
 
 const isString = x => typeof x === "string";
@@ -45,22 +44,11 @@ const {
   NR_LICENSE_KEY,
   NR_INGEST_KEY,
   staging,
-  logs: {
-    collectLogs
-  } = {
-    collectLogs: true
-  },
-  traces: {
-    collectTraces
-  } = {
-    collectTraces: true
-  },
-  metrics: {
-    collectMetrics
-  } = {
-    collectMetrics: true
-  },
-  metrics = {}
+  collectLogs = true,
+  collectMetrics = true,
+  collectTraces = true,
+  collectBundleSize = true,
+  customTags = {},
 } = PLUGIN_OPTIONS; // Create a logger instance
 // process.stdout._handle.setBlocking(true);
 const winstonLogger = winston.createLogger({
@@ -155,6 +143,7 @@ if (NR_LICENSE_KEY && collectLogs) {
           });
         }
       } catch (err) {
+        console.error(`teeeeeeeeee ${JSON.stringify(err)}`)
         winstonLogger.log({
           level: "error",
           message: err.message
@@ -177,7 +166,7 @@ class BenchMeta {
     this.flushed = false; // Completed flushing?
 
     this.localTime = new Date().toISOString();
-    this.netlifyHook = CI_NAME === "netlify" && process.env.INCOMMING_HOOK_BODY;
+    // this.netlifyHook = CI_NAME === "netlify" && process.env.INCOMMING_HOOK_BODY;
     this.timestamps = {
       // TODO: we should also have access to node's timing data and see how long it took before bootstrapping this script
       bootstrapTime: performance.now(),
@@ -231,14 +220,14 @@ class BenchMeta {
     let buildType = nextBuildType;
     nextBuildType = process.env.BENCHMARK_BUILD_TYPE_NEXT ? process.env.BENCHMARK_BUILD_TYPE_NEXT : `DATA_UPDATE`;
 
-    if (this.netlifyHook) {
-      try {
-        const incomingHookBody = JSON.parse(incomingHookBodyEnv);
-        buildType = incomingHookBody && incomingHookBody.buildType;
-      } catch (e) {
-        this.reportInfo(`[@] gatsby-plugin-newrelic: Suppressed an error trying to JSON.parse(INCOMING_HOOK_BODY): ${e}`);
-      }
-    }
+    // if (this.netlifyHook) {
+    //   try {
+    //     const incomingHookBody = JSON.parse(incomingHookBodyEnv);
+    //     buildType = incomingHookBody && incomingHookBody.buildType;
+    //   } catch (e) {
+    //     this.reportInfo(`[@] gatsby-plugin-newrelic: Suppressed an error trying to JSON.parse(INCOMING_HOOK_BODY): ${e}`);
+    //   }
+    // }
 
     return buildType;
   }
@@ -273,14 +262,12 @@ class BenchMeta {
 
     return { ...ciAttributes,
       ...benchmarkMetadata,
-      ...metrics.tags,
-      gatsbySite: PLUGIN_OPTIONS.SITE_NAME,
+      ...customTags,
       buildId: PLUGIN_OPTIONS.buildId,
       gitHash,
       gitAuthor,
       gitCommitTimestamp,
       gitRepoName,
-      ciName: CI_NAME,
       nodeEnv,
       newRelicSiteName: PLUGIN_OPTIONS.SITE_NAME,
       nodejs: nodejsVersion,
@@ -403,9 +390,26 @@ class BenchMeta {
     return this.flush();
   }
 
+  async processBundleJson() {
+    const rawJson = collectBundleJson()
+    const bundleEvents = await processFile(rawJson);
+    const res = await postEvents(bundleEvents);
+
+    if (res.status >= 300) {
+      this.reportError(`[@] gatsby-plugin-newrelic: Response error`, new Error(`EventApi responded with a ${res.status} error: ${JSON.stringify(res.data)}`));
+    } else {
+      this.reportInfo(`[@] gatsby-plugin-newrelic: MetricAPI EventApi: ${res.status}: ${JSON.stringify(res.data)}`);
+    }
+  }
+
   async flush() {
     const data = this.getData();
     const json = JSON.stringify(data, null, 2);
+
+    if (collectBundleSize) {
+      this.reportInfo(`[@] gatsby-plugin-newrelic: Collecting JS Bundle sizes`);
+      await this.processBundleJson();
+    }
 
     if (!BENCHMARK_REPORTING_URL) {
       this.reportInfo(`[@] gatsby-plugin-newrelic: MetricAPI BENCHMARK_REPORTING_URL not set, not submitting data`);
@@ -430,7 +434,7 @@ class BenchMeta {
     });
     const content = await res.text();
 
-    if ([401, 500].includes(res.status)) {
+    if (res.status >= 300) {
       this.reportError(`[@] gatsby-plugin-newrelic: Response error`, new Error(`MetricAPI responded with a ${res.status} error: ${content}`));
     } else {
       this.reportInfo(`[@] gatsby-plugin-newrelic: MetricAPI response: ${res.status}: ${content}`);
@@ -461,18 +465,19 @@ process.on(`exit`, () => {
       benchMeta.reportError(`[@] gatsby-plugin-newrelic: error`, new Error(`This is process.exit(); [@] gatsby-plugin-newrelic: MetricAPI collector has not completely flushed yet`));
     }
 
-    process.stdout.write = originalStdoutWrite;
-    process.stderr.write = originalStderrWrite;
+    process.stdout.write = originalStdoutWrite ? originalStdoutWrite : process.stdout.write;
+    process.stderr.write = originalStderrWrite ? originalStderrWrite : process.stderr.write;
     process.exit(1);
   }
 });
 
 async function onPreInit(api) {
-  !NR_INGEST_KEY && benchMeta.reportInfo(`[!] gatsby-plugin-newrelic: NR_INGEST_KEY not set`);
-  !NR_LICENSE_KEY && benchMeta.reportInfo(`[!] gatsby-plugin-newrelic: NR_LICENSE_KEY not set`);
-  !collectTraces && benchMeta.reportInfo("[!] gatsby-newrelic-plugin: Not collecting Traces");
-  !collectLogs && benchMeta.reportInfo("[!] gatsby-newrelic-plugin: Not collecting Logs");
-  !collectMetrics && benchMeta.reportInfo("[!] gatsby-newrelic-plugin: Not collecting Metrics");
+  !NR_INGEST_KEY && console.info(`[!] gatsby-plugin-newrelic: NR_INGEST_KEY not set`);
+  !NR_LICENSE_KEY && console.info(`[!] gatsby-plugin-newrelic: NR_LICENSE_KEY not set`);
+  !collectTraces && console.info("[!] gatsby-newrelic-plugin: Not collecting Traces");
+  !collectLogs && console.info("[!] gatsby-newrelic-plugin: Not collecting Logs");
+  !collectMetrics && console.info("[!] gatsby-newrelic-plugin: Not collecting Metrics");
+  !collectBundleSize && console.info("[!] gatsby-newrelic-plugin: Not collecting JS Bundle Size");
   init(`preInit`);
   collectMetrics && benchMeta.markDataPoint(`preInit`, api);
 }
