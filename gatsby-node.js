@@ -9,7 +9,7 @@ const {
 const {
   PLUGIN_OPTIONS,
   BENCHMARK_REPORTING_URL
-} = require("gatsby-plugin-newrelic-test/utils/constants");
+} = require("gatsby-build-newrelic/utils/constants");
 
 const NewrelicLogs = require("winston-to-newrelic-logs");
 

@@ -13,13 +13,13 @@
 Build Command:
 
 ```
-NEW_RELIC_HOME='./node_modules/gatsby-plugin-newrelic-test' gatsby build --open-tracing-config-file ./node_modules/gatsby-plugin-newrelic-test/zipkin-local.js --graphql-tracing",
+NEW_RELIC_HOME='./node_modules/gatsby-build-newrelic' gatsby build --open-tracing-config-file ./node_modules/gatsby-build-newrelic/zipkin-local.js --graphql-tracing",
 ```
 
 or
 
 ```
-export NEW_RELIC_HOME='./node_modules/gatsby-plugin-newrelic-test'
+export NEW_RELIC_HOME='./node_modules/gatsby-build-newrelic'
 ```
 
 ## Usage
@@ -27,7 +27,7 @@ In `gatsby-config.js`, add the following code snippet to configure the plugin
 
 ```javascript
     {
-      resolve: "gatsby-plugin-newrelic-test",
+      resolve: "gatsby-build-newrelic",
       options: {
         NR_INGEST_KEY: "INSERT INGEST KEY",
         NR_LICENSE_KEY: "INSERT LICNESE KEY",

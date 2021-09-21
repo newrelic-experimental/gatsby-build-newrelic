@@ -1,5 +1,5 @@
 {
-  "name": "gatsby-plugin-newrelic-test",
+  "name": "gatsby-build-newrelic",
   "version": "1.2.0",
   "description": "[![New Relic Experimental header](https://github.com/newrelic/opensource-website/raw/master/src/images/categories/Experimental.png)](https://opensource.newrelic.com/oss-category/#new-relic-experimental)",
   "main": "index.js",
