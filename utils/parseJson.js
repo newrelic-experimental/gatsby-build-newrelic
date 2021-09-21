@@ -6,11 +6,11 @@ const fs = require(`fs`);
 const path = require('path');
 const getCiData = require("./getCiData");
 
-const ciAttributes = getCiData();
 const events = []
 
 const getDeepestGroup = (group, label) => {
   if (!group.groups) {
+    const ciAttributes = getCiData();
     let newEvent = {
       label,
       eventType: "bundleSize",

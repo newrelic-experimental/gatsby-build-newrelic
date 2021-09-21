@@ -11,7 +11,6 @@ const _zipkinJavascriptOpentracing = _interopRequireDefault(
 const _nodeFetch = _interopRequireDefault(require("node-fetch"));
 const {now} = require('./utils/time');
 
-const ciAttributes = getCiData();
 const TIMEOUT_LENGTH = 60 * 60 * 60 * 1000000;
 
 let recorder, 
@@ -22,6 +21,10 @@ let recorder,
  */
 
 const create = () => {
+  console.log(`Gatsby ${process.env.GATSBY_CLOUD}`)
+  console.log(`VERCEL ${process.env.VERCEL}`)
+  console.log(`Netlify ${process.env.NETLIFY}`)
+  const ciAttributes = getCiData();
   const { staging, NR_INGEST_KEY, customTags = {}, SITE_NAME } = PLUGIN_OPTIONS;
   logger = new _zipkinTransportHttp.HttpLogger({
     endpoint: `https://${
