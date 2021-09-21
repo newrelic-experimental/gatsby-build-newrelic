@@ -1,7 +1,7 @@
 const axios = require("axios")
 const {
   PLUGIN_OPTIONS
-} = require("gatsby-plugin-newrelic-test/utils/constants");
+} = require("gatsby-build-newrelic/utils/constants");
 const fs = require(`fs`);
 const path = require('path');
 const getCiData = require("./getCiData");

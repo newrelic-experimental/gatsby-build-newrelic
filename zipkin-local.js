@@ -1,7 +1,7 @@
 const _interopRequireDefault = require("@babel/runtime/helpers/interopRequireDefault");
 const {
   PLUGIN_OPTIONS,
-} = require("gatsby-plugin-newrelic-test/utils/constants");
+} = require("gatsby-build-newrelic/utils/constants");
 const getCiData = require("./utils/getCiData");
 const _zipkin = _interopRequireDefault(require("zipkin"));
 const _zipkinTransportHttp = require("zipkin-transport-newrelic");
