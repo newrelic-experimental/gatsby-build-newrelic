@@ -34,6 +34,22 @@ export NEW_RELIC_INSERT_KEY = <insert insert key here>
 export NEW_RELIC_ACCOUNT_ID = <insert account number here> 
 ```
 
+## Usage
+In `gatsby-config.js`, add the following code snippet to configure the plugin
+
+```javascript
+{
+  resolve: "gatsby-build-newrelic",
+      options: {
+        NR_INSERT_KEY: process.env.NEW_RELIC_INSERT_KEY || '',
+        NR_LICENSE_KEY: process.env.NEW_RELIC_LICENSE_KEY || '',
+        NR_ACCOUNT_ID: process.env.NEW_RELIC_ACCOUNT_ID,
+        SITE_NAME: 'jankstack',
+        customTags: { gatsbySite: true }
+      }
+}
+```
+
 ## Support
 
 New Relic hosts and moderates an online forum where customers can interact with New Relic employees as well as other customers to get help and share best practices. Like all official New Relic open source projects, there's a related Community topic in the New Relic Explorers Hub. You can find this project's topic/threads here:
