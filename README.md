@@ -17,13 +17,22 @@ npm i gatsby-build-newrelic
 >[**Optional** - Include more thorough instructions on how to use the software. This section might not be needed if the Getting Started section is enough. Remove this section if it's not needed.]
 
 
-## Building
+## Get Environmental Variables from New Relic 
+### Get Ingest License Key
+![Screen Shot 2021-09-22 at 2 50 17 PM](https://user-images.githubusercontent.com/10321085/134426856-79e962ad-dd46-4ad5-a7f1-e42e5c25524e.png)
+```bash
+export NEW_RELIC_LICENSE_KEY = <insert key here>
+```
 
->[**Optional** - Include this section if users will need to follow specific instructions to build the software from source. Be sure to include any third party build dependencies that need to be installed separately. Remove this section if it's not needed.]
+### Get INSERT LICENSE KEY + ACCOUNT NUMBER
+![Screen Shot 2021-09-22 at 2 50 17 PM](https://user-images.githubusercontent.com/10321085/134427203-c9d452ef-ab16-4e60-af85-39a4e568c867.png)
+![Screen Shot 2021-09-22 at 2 54 47 PM](https://user-images.githubusercontent.com/10321085/134427644-0987db49-e4f8-480b-b2cb-42222a5e87fe.png)
+![Screen Shot 2021-09-22 at 2 55 40 PM](https://user-images.githubusercontent.com/10321085/134428081-4a391559-11c7-4c85-9921-2508cfdb4eb9.png)
 
-## Testing
-
->[**Optional** - Include instructions on how to run tests if we include tests with the codebase. Remove this section if it's not needed.]
+```bash
+export NEW_RELIC_INSERT_KEY = <insert insert key here> 
+export NEW_RELIC_ACCOUNT_ID = <insert account number here> 
+```
 
 ## Support
 
