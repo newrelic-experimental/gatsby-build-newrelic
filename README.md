@@ -1,15 +1,17 @@
 [![New Relic Experimental header](https://github.com/newrelic/opensource-website/raw/master/src/images/categories/Experimental.png)](https://opensource.newrelic.com/oss-category/#new-relic-experimental)
 
-# [Name of Project] [build badges go here when available]
+# gatsby-build-newrelic
 
->[Brief description - what is the project and value does it provide? How often should users expect to get releases? How is versioning set up? Where does this project want to go?]
+> This build plugin hooks into **Performance Traces** and **Logs** produced by the Gatsby framework and provides granular build data directly in New Relic so you can debug and optimize your build times.
 
-## Installation
-
-> [Include a step-by-step procedure on how to get your code installed. Be sure to include any third-party dependencies that need to be installed separately]
+## Install
+```bash
+npm i gatsby-build-newrelic
+```
 
 ## Getting Started
 >[Simple steps to start working with the software similar to a "Hello World"]
+
 
 ## Usage
 >[**Optional** - Include more thorough instructions on how to use the software. This section might not be needed if the Getting Started section is enough. Remove this section if it's not needed.]
