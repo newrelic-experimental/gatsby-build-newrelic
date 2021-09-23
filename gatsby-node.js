@@ -48,7 +48,8 @@ let DELETED_PAGES,
     LOGS_STARTED = false;
 const {
   NR_LICENSE_KEY,
-  NR_INGEST_KEY,
+  NR_INSERT_KEY,
+  NR_ACCOUNT_ID,
   staging,
   collectLogs = true,
   collectMetrics = true,
@@ -67,7 +68,7 @@ const winstonLogger = winston.createLogger({
 });
 
 if (NR_LICENSE_KEY && collectLogs) {
-  !LOGS_STARTED && console.log(`[@] gatsby-plugin-newrelic: Streaming logs`);
+  !LOGS_STARTED && console.log(`[@] gatsby-build-newrelic: Streaming logs`);
   LOGS_STARTED = true;
   const originalStdoutWrite = process.stdout.write.bind(process.stdout);
   const originalStderrWrite = process.stderr.write.bind(process.stderr); // Remove loading braille characters from log strings
@@ -214,7 +215,7 @@ class BenchMeta {
       }
     } catch (e) {
       siteId = `error`;
-      this.reportInfo(`[@] gatsby-plugin-newrelic: Suppressed an error trying to JSON.parse(GATSBY_TELEMETRY_TAGS): ${e}`);
+      this.reportInfo(`[@] gatsby-build-newrelic: Suppressed an error trying to JSON.parse(GATSBY_TELEMETRY_TAGS): ${e}`);
     }
 
     return siteId;
@@ -231,7 +232,7 @@ class BenchMeta {
     //     const incomingHookBody = JSON.parse(incomingHookBodyEnv);
     //     buildType = incomingHookBody && incomingHookBody.buildType;
     //   } catch (e) {
-    //     this.reportInfo(`[@] gatsby-plugin-newrelic: Suppressed an error trying to JSON.parse(INCOMING_HOOK_BODY): ${e}`);
+    //     this.reportInfo(`[@] gatsby-build-newrelic: Suppressed an error trying to JSON.parse(INCOMING_HOOK_BODY): ${e}`);
     //   }
     // }
 
@@ -365,7 +366,7 @@ class BenchMeta {
 
   markStart() {
     if (this.started) {
-      this.reportError(`[@] gatsby-plugin-newrelic: `, new Error(`Error: Should not call markStart() more than once`));
+      this.reportError(`[@] gatsby-build-newrelic: `, new Error(`Error: Should not call markStart() more than once`));
       process.exit(1);
     }
 
@@ -378,7 +379,7 @@ class BenchMeta {
 
     if (BENCHMARK_REPORTING_URL) {
       if (!(name in this.timestamps)) {
-        this.reportError(`[@] gatsby-plugin-newrelic: Attempted to record a timestamp with a name (\`${name}\`) that wasn't expected`);
+        this.reportError(`[@] gatsby-build-newrelic: Attempted to record a timestamp with a name (\`${name}\`) that wasn't expected`);
         process.exit(1);
       }
     }
@@ -388,7 +389,7 @@ class BenchMeta {
 
   async markEnd() {
     if (!this.timestamps.benchmarkStart) {
-      this.reportError(`[@] gatsby-plugin-newrelic:`, new Error(`Error: Should not call markEnd() before calling markStart()`));
+      this.reportError(`[@] gatsby-build-newrelic:`, new Error(`Error: Should not call markEnd() before calling markStart()`));
       process.exit(1);
     }
 
@@ -402,9 +403,9 @@ class BenchMeta {
     const res = await postEvents(bundleEvents);
 
     if (res.status >= 300) {
-      this.reportError(`[@] gatsby-plugin-newrelic: Response error`, new Error(`EventApi responded with a ${res.status} error: ${JSON.stringify(res.data)}`));
+      this.reportError(`[@] gatsby-build-newrelic: Response error`, new Error(`EventApi responded with a ${res.status} error: ${JSON.stringify(res.data)}`));
     } else {
-      this.reportInfo(`[@] gatsby-plugin-newrelic: MetricAPI EventApi: ${res.status}: ${JSON.stringify(res.data)}`);
+      this.reportInfo(`[@] gatsby-build-newrelic: EventApi: ${res.status}: ${JSON.stringify(res.data)}`);
     }
   }
 
@@ -412,38 +413,38 @@ class BenchMeta {
     const data = this.getData();
     const json = JSON.stringify(data, null, 2);
 
-    if (collectBundleSize) {
-      this.reportInfo(`[@] gatsby-plugin-newrelic: Collecting JS Bundle sizes`);
+    if (collectBundleSize && NR_ACCOUNT_ID) {
+      this.reportInfo(`[@] gatsby-build-newrelic: Collecting JS Bundle sizes`);
       await this.processBundleJson();
     }
 
     if (!BENCHMARK_REPORTING_URL) {
-      this.reportInfo(`[@] gatsby-plugin-newrelic: MetricAPI BENCHMARK_REPORTING_URL not set, not submitting data`);
+      this.reportInfo(`[@] gatsby-build-newrelic: MetricAPI BENCHMARK_REPORTING_URL not set, not submitting data`);
       this.flushed = true;
       return this.flushing = Promise.resolve();
     }
 
-    if (!NR_INGEST_KEY) {
-      console.log(`[!] gatsby-plugin-newrelic: NR_INGEST_KEY not set`);
+    if (!NR_INSERT_KEY) {
+      console.log(`[!] gatsby-build-newrelic: NR_INSERT_KEY not set`);
       this.flushed = true;
       return this.flushing = Promise.resolve();
     }
 
-    this.reportInfo(`[@] gatsby-plugin-newrelic: Flushing benchmark data to remote server...`);
+    this.reportInfo(`[@] gatsby-build-newrelic: Flushing benchmark data to remote server...`);
     const res = await nodeFetch(`${BENCHMARK_REPORTING_URL}`, {
       method: `POST`,
       headers: {
         "content-type": `application/json`,
-        "Api-Key": NR_INGEST_KEY
+        "Api-Key": NR_INSERT_KEY
       },
       body: json
     });
     const content = await res.text();
 
     if (res.status >= 300) {
-      this.reportError(`[@] gatsby-plugin-newrelic: Response error`, new Error(`MetricAPI responded with a ${res.status} error: ${content}`));
+      this.reportError(`[@] gatsby-build-newrelic: Response error`, new Error(`MetricAPI responded with a ${res.status} error: ${content}`));
     } else {
-      this.reportInfo(`[@] gatsby-plugin-newrelic: MetricAPI response: ${res.status}: ${content}`);
+      this.reportInfo(`[@] gatsby-build-newrelic: MetricAPI response: ${res.status}: ${content}`);
     }
 
     this.flushed = true; // Note: res.text returns a promise
@@ -457,7 +458,7 @@ function init() {
   if (!benchMeta && collectMetrics) {
     benchMeta = new BenchMeta(); // This should be set in the gatsby-config of the site when enabling this plugin
 
-    benchMeta.reportInfo(`[@] gatsby-plugin-newrelic: Will post benchmark data to: ${BENCHMARK_REPORTING_URL || `the CLI`}`);
+    benchMeta.reportInfo(`[@] gatsby-build-newrelic: Will post benchmark data to: ${BENCHMARK_REPORTING_URL || `the CLI`}`);
     benchMeta.markStart();
   }
 }
@@ -468,7 +469,7 @@ process.on(`exit`, () => {
     try {
       benchMeta.flush();
     } catch (error) {
-      benchMeta.reportError(`[@] gatsby-plugin-newrelic: error`, new Error(`This is process.exit(); [@] gatsby-plugin-newrelic: MetricAPI collector has not completely flushed yet`));
+      benchMeta.reportError(`[@] gatsby-build-newrelic: error`, new Error(`This is process.exit(); [@] gatsby-build-newrelic: MetricAPI collector has not completely flushed yet`));
     }
 
     process.stdout.write = originalStdoutWrite ? originalStdoutWrite : process.stdout.write;
@@ -478,12 +479,13 @@ process.on(`exit`, () => {
 });
 
 async function onPreInit(api) {
-  !NR_INGEST_KEY && console.info(`[!] gatsby-plugin-newrelic: NR_INGEST_KEY not set`);
-  !NR_LICENSE_KEY && console.info(`[!] gatsby-plugin-newrelic: NR_LICENSE_KEY not set`);
-  !collectTraces && console.info("[!] gatsby-newrelic-plugin: Not collecting Traces");
-  !collectLogs && console.info("[!] gatsby-newrelic-plugin: Not collecting Logs");
-  !collectMetrics && console.info("[!] gatsby-newrelic-plugin: Not collecting Metrics");
-  !collectBundleSize && console.info("[!] gatsby-newrelic-plugin: Not collecting JS Bundle Size");
+  !NR_INSERT_KEY && console.info(`[!] gatsby-build-newrelic: NR_INSERT_KEY not set`);
+  !NR_LICENSE_KEY && console.info(`[!] gatsby-build-newrelic: NR_LICENSE_KEY not set`);
+  !NR_ACCOUNT_ID && console.info(`[!] gatsby-build-newrelic: NR_ACCOUNT_ID not set`);
+  !collectTraces && console.info("[!] gatsby-build-newrelic: Not collecting Traces");
+  !collectLogs && console.info("[!] gatsby-build-newrelic: Not collecting Logs");
+  !collectMetrics && console.info("[!] gatsby-build-newrelic: Not collecting Metrics");
+  !collectBundleSize && console.info("[!] gatsby-build-newrelic: Not collecting JS Bundle Size");
   init(`preInit`);
   collectMetrics && benchMeta.markDataPoint(`preInit`, api);
 }

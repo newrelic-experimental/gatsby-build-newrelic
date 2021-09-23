@@ -29,8 +29,8 @@ In `gatsby-config.js`, add the following code snippet to configure the plugin
     {
       resolve: "gatsby-build-newrelic",
       options: {
-        NR_INGEST_KEY: "INSERT INGEST KEY",
-        NR_LICENSE_KEY: "INSERT LICNESE KEY",
+        NR_INSERT_KEY: "INSERT KEY",
+        NR_LICENSE_KEY: "LICENSE KEY",
         SITE_NAME: "your-website-name",
         traces: {
           collectTraces: true,

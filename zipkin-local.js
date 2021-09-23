@@ -21,11 +21,8 @@ let recorder,
  */
 
 const create = () => {
-  console.log(`Gatsby ${process.env.GATSBY_CLOUD}`)
-  console.log(`VERCEL ${process.env.VERCEL}`)
-  console.log(`Netlify ${process.env.NETLIFY}`)
   const ciAttributes = getCiData();
-  const { staging, NR_INGEST_KEY, customTags = {}, SITE_NAME } = PLUGIN_OPTIONS;
+  const { staging, NR_INSERT_KEY, customTags = {}, SITE_NAME } = PLUGIN_OPTIONS;
   logger = new _zipkinTransportHttp.HttpLogger({
     endpoint: `https://${
       staging ? `staging-` : ``
@@ -33,7 +30,7 @@ const create = () => {
     jsonEncoder: _zipkin.jsonEncoder.JSON_V2,
     httpInterval: 100,
     headers: {
-      "Api-Key": NR_INGEST_KEY,
+      "Api-Key": NR_INSERT_KEY,
       "Data-Format": "zipkin",
       "Data-Format-Version": 2,
       options: PLUGIN_OPTIONS,
@@ -85,13 +82,13 @@ const formatTrace = (trace) => {
 }
 
 const sendTraceQueue = async (queue) => {
-  const { NR_INGEST_KEY } = PLUGIN_OPTIONS;
+  const { NR_INSERT_KEY } = PLUGIN_OPTIONS;
   const response = await (0, _nodeFetch.default)(logger.endpoint, {
     method: `POST`,
     body: queue,
     headers: {
       "Content-Type": "application/json",
-      "Api-Key": NR_INGEST_KEY,
+      "Api-Key": NR_INSERT_KEY,
       "Data-Format": "zipkin",
       "Data-Format-Version": 2,
     },
@@ -99,7 +96,7 @@ const sendTraceQueue = async (queue) => {
 
   if (response.status >= 300) {
     const err =
-      `[@] gatsby-plugin-newrelic: Unexpected response while sending trace data, status:` +
+      `[@] gatsby-build-newrelic: Unexpected response while sending trace data, status:` +
       `${response.status}`;
     if (logger.errorListenerSet) {
       logger.emit(`error`, new Error(err));
@@ -111,16 +108,21 @@ const sendTraceQueue = async (queue) => {
 }
 
 const _processQueue = async () => {
-  const { NR_INGEST_KEY, collectTraces = true} = PLUGIN_OPTIONS;
-  if (!NR_INGEST_KEY || !collectTraces || logger.queue.length <= 0) {
+  const { NR_INSERT_KEY, collectTraces = true} = PLUGIN_OPTIONS;
+  if (!NR_INSERT_KEY || !collectTraces || logger.queue.length <= 0) {
     return;
   }
   try {
     const formattedQueue = logger.queue.map(formatTrace);
-    const postBody = `[${formattedQueue.join(",")}]`;
-    await sendTraceQueue(postBody);
+    console.log(`[@] gatsby-build-newrelic: Sending trace data`)
+
+    while(formattedQueue.length) {
+      const smallerArray = formattedQueue.splice(0, 300)
+      const postBody = `[${smallerArray.join(",")}]`;
+      await sendTraceQueue(postBody);
+    }
   } catch (error) {
-    const err = `[@] gatsby-plugin-newrelic: Error sending trace data ${error}`;
+    const err = `[@] gatsby-build-newrelic: Error sending trace data ${error}`;
     if (logger.errorListenerSet) {
       logger.emit(`error`, new Error(err));
     }

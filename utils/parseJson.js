@@ -41,8 +41,8 @@ const processFile = (jsonData) => {
 const postEvents = async events => {
   const res = await axios({
     method: 'post',
-    url: `https://${PLUGIN_OPTIONS.staging ? `staging-` : ``}insights-collector.newrelic.com/v1/accounts/10956800/events`,
-    headers: { 'content-type': 'application/json', "X-Insert-Key": PLUGIN_OPTIONS.NR_INGEST_KEY },
+    url: `https://${PLUGIN_OPTIONS.staging ? `staging-` : ``}insights-collector.newrelic.com/v1/accounts/${PLUGIN_OPTIONS.NR_ACCOUNT_ID}/events`,
+    headers: { 'content-type': 'application/json', "X-Insert-Key": PLUGIN_OPTIONS.NR_INSERT_KEY },
     data: events
   });
   return res;
