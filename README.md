@@ -1,12 +1,13 @@
 [![New Relic Experimental header](https://github.com/newrelic/opensource-website/raw/master/src/images/categories/Experimental.png)](https://opensource.newrelic.com/oss-category/#new-relic-experimental)
 
-# [Name of Project] [build badges go here when available]
+# gatsby-build-newrelic
 
->[Brief description - what is the project and value does it provide? How often should users expect to get releases? How is versioning set up? Where does this project want to go?]
+> This build plugin hooks into **Performance Traces** and **Logs** produced by the Gatsby framework and provides granular build data directly in New Relic so you can debug and optimize your build times.
 
-## Installation
-
-> [Include a step-by-step procedure on how to get your code installed. Be sure to include any third-party dependencies that need to be installed separately]
+## Install
+```bash
+npm i gatsby-build-newrelic
+```
 
 ## Getting Started
 >[Simple steps to start working with the software similar to a "Hello World"]
@@ -16,7 +17,8 @@ Build Command:
 NEW_RELIC_HOME='./node_modules/gatsby-build-newrelic' gatsby build --open-tracing-config-file ./node_modules/gatsby-build-newrelic/zipkin-local.js --graphql-tracing",
 ```
 
-or
+## Usage
+>[**Optional** - Include more thorough instructions on how to use the software. This section might not be needed if the Getting Started section is enough. Remove this section if it's not needed.]
 
 ```
 export NEW_RELIC_HOME='./node_modules/gatsby-build-newrelic'
@@ -54,13 +56,38 @@ In `gatsby-config.js`, add the following code snippet to configure the plugin
     },
 ```
 
-## Building
+## Get Environmental Variables from New Relic 
+### Get Ingest License Key
+![Screen Shot 2021-09-22 at 2 50 17 PM](https://user-images.githubusercontent.com/10321085/134426856-79e962ad-dd46-4ad5-a7f1-e42e5c25524e.png)
+```bash
+export NEW_RELIC_LICENSE_KEY = <insert key here>
+```
 
->[**Optional** - Include this section if users will need to follow specific instructions to build the software from source. Be sure to include any third party build dependencies that need to be installed separately. Remove this section if it's not needed.]
+### Get INSERT LICENSE KEY + ACCOUNT NUMBER
+![Screen Shot 2021-09-22 at 2 50 17 PM](https://user-images.githubusercontent.com/10321085/134427203-c9d452ef-ab16-4e60-af85-39a4e568c867.png)
+![Screen Shot 2021-09-22 at 2 54 47 PM](https://user-images.githubusercontent.com/10321085/134427644-0987db49-e4f8-480b-b2cb-42222a5e87fe.png)
+![Screen Shot 2021-09-22 at 2 55 40 PM](https://user-images.githubusercontent.com/10321085/134428081-4a391559-11c7-4c85-9921-2508cfdb4eb9.png)
 
-## Testing
+```bash
+export NEW_RELIC_INSERT_KEY = <insert insert key here> 
+export NEW_RELIC_ACCOUNT_ID = <insert account number here> 
+```
 
->[**Optional** - Include instructions on how to run tests if we include tests with the codebase. Remove this section if it's not needed.]
+## Usage
+In `gatsby-config.js`, add the following code snippet to configure the plugin
+
+```javascript
+{
+  resolve: "gatsby-build-newrelic",
+      options: {
+        NR_INSERT_KEY: process.env.NEW_RELIC_INSERT_KEY || '',
+        NR_LICENSE_KEY: process.env.NEW_RELIC_LICENSE_KEY || '',
+        NR_ACCOUNT_ID: process.env.NEW_RELIC_ACCOUNT_ID,
+        SITE_NAME: 'jankstack',
+        customTags: { gatsbySite: true }
+      }
+}
+```
 
 ## Support
 
