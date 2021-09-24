@@ -11,11 +11,50 @@ npm i gatsby-build-newrelic
 
 ## Getting Started
 >[Simple steps to start working with the software similar to a "Hello World"]
+Build Command:
 
+```
+NEW_RELIC_HOME='./node_modules/gatsby-build-newrelic' gatsby build --open-tracing-config-file ./node_modules/gatsby-build-newrelic/zipkin-local.js --graphql-tracing",
+```
 
 ## Usage
 >[**Optional** - Include more thorough instructions on how to use the software. This section might not be needed if the Getting Started section is enough. Remove this section if it's not needed.]
 
+```
+export NEW_RELIC_HOME='./node_modules/gatsby-build-newrelic'
+```
+
+## Usage
+In `gatsby-config.js`, add the following code snippet to configure the plugin
+
+```javascript
+    {
+      resolve: "gatsby-build-newrelic",
+      options: {
+        NR_INSERT_KEY: "INSERT KEY",
+        NR_LICENSE_KEY: "LICENSE KEY",
+        SITE_NAME: "your-website-name",
+        traces: {
+          collectTraces: true,
+          tags: {
+            "daniel": "kim"
+          },
+        },
+        logs: {
+          collectLogs: true,
+          tags: {
+            "ruairi": "douglas"
+          },
+        },
+        metrics: {
+          collectMetrics: true,
+          tags: {
+            "ruairi": "douglas"
+          },
+        },
+      },
+    },
+```
 
 ## Get Environmental Variables from New Relic 
 ### Get Ingest License Key
