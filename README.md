@@ -14,7 +14,7 @@ npm i gatsby-build-newrelic
 Build Command:
 
 ```
-NEW_RELIC_HOME='./node_modules/gatsby-build-newrelic' gatsby build --open-tracing-config-file ./node_modules/gatsby-build-newrelic/zipkin-local.js --graphql-tracing",
+gatsby build --open-tracing-config-file ./node_modules/gatsby-build-newrelic/zipkin-local.js --graphql-tracing",
 ```
 
 ## Usage
