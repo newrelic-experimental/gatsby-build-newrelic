@@ -24,38 +24,6 @@ NEW_RELIC_HOME='./node_modules/gatsby-build-newrelic' gatsby build --open-tracin
 export NEW_RELIC_HOME='./node_modules/gatsby-build-newrelic'
 ```
 
-## Usage
-In `gatsby-config.js`, add the following code snippet to configure the plugin
-
-```javascript
-    {
-      resolve: "gatsby-build-newrelic",
-      options: {
-        NR_INSERT_KEY: "INSERT KEY",
-        NR_LICENSE_KEY: "LICENSE KEY",
-        SITE_NAME: "your-website-name",
-        traces: {
-          collectTraces: true,
-          tags: {
-            "daniel": "kim"
-          },
-        },
-        logs: {
-          collectLogs: true,
-          tags: {
-            "ruairi": "douglas"
-          },
-        },
-        metrics: {
-          collectMetrics: true,
-          tags: {
-            "ruairi": "douglas"
-          },
-        },
-      },
-    },
-```
-
 ## Get Environmental Variables from New Relic 
 ### Get Ingest License Key
 ![Screen Shot 2021-09-22 at 2 50 17 PM](https://user-images.githubusercontent.com/10321085/134426856-79e962ad-dd46-4ad5-a7f1-e42e5c25524e.png)
