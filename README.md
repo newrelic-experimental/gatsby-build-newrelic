@@ -41,7 +41,7 @@ gatsby build --open-tracing-config-file ./node_modules/gatsby-build-newrelic/zip
 ### Configuration
 In `gatsby-config.js`, add the following code snippet to configure the plugin
 
-```json
+```javascript
     {
       resolve: "gatsby-build-newrelic",
       options: {
