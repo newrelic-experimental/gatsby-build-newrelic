@@ -29,12 +29,13 @@ In `gatsby-config.js`, add the following code snippet to configure the plugin
     {
       resolve: "gatsby-build-newrelic",
       options: {
-        NR_LICENSE_KEY: "LICENSE KEY",
+        NR_LICENSE_KEY: "LICENSE KEY", // https://docs.newrelic.com/docs/apis/intro-apis/new-relic-api-keys/#ingest-license-key
+        NR_ACCOUNT_ID: "Account Id",
         SITE_NAME: "your-website-name",
         collectTraces: true, // This will default to true so you can remove
         collectLogs: true, // This will default to true so you can remove
         collectMetrics: true, // This will default to true so you can remove
-        customTags: {
+        customTags: { // Optional tags you would like to add to your data. For more info see https://docs.newrelic.com/docs/new-relic-one/use-new-relic-one/core-concepts/use-tags-help-organize-find-your-data/
           gatsbySite: 'jankstack',
           newFeature: 'remove-jank',
         }
