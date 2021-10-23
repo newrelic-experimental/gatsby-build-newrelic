@@ -50,6 +50,7 @@ const {
   NR_LICENSE_KEY,
   NR_ACCOUNT_ID,
   staging,
+  euAccount,
   collectLogs = true,
   collectMetrics = true,
   collectTraces = true,
@@ -58,10 +59,18 @@ const {
 } = PLUGIN_OPTIONS; // Create a logger instance
 // process.stdout._handle.setBlocking(true);
 
+let logApiUrl = "https://log-api.newrelic.com";
+
+if (staging) {
+  logApiUrl = "https://staging-log-api.newrelic.com";
+} else if (euAccount) {
+  logApiUrl = "https://log-api.eu.newrelic.com";
+}
+
 const winstonLogger = winston.createLogger({
   transports: [new NewrelicLogs({
     licenseKey: NR_LICENSE_KEY,
-    apiUrl: `https://${staging ? `staging-` : ``}log-api.newrelic.com`,
+    apiUrl: logApiUrl,
     pluginOptions: PLUGIN_OPTIONS
   })]
 });

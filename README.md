@@ -1,31 +1,47 @@
 [![New Relic Experimental header](https://github.com/newrelic/opensource-website/raw/master/src/images/categories/Experimental.png)](https://opensource.newrelic.com/oss-category/#new-relic-experimental)
 
-# [Name of Project] [build badges go here when available]
+# Gatsby Build Newrelic
 
->[Brief description - what is the project and value does it provide? How often should users expect to get releases? How is versioning set up? Where does this project want to go?]
-
-## Installation
-
-> [Include a step-by-step procedure on how to get your code installed. Be sure to include any third-party dependencies that need to be installed separately]
+Using Gatsby to deliver large websites can speed up end users’ experiences. However, as those projects scale, many development teams are slowed down by long build times. The `gatsby-build-newrelic` plugin provides instant observability into the entire Gatsby build process, exporting vital telemetry data from within the belly of the beast. With events, metrics, logs, and traces, we are able to contextualize and identify performance issues within our plugins, 3rd party APIs, and other parts of our website.
 
 ## Getting Started
->[Simple steps to start working with the software similar to a "Hello World"]
-Build Command:
+### Account Setup and Required Variables
+
+1. If you don't already have a New Relic account, [sign-up for our free forever tier - no credit-card required!](https://newrelic.com/signup?utm_source=jamstackconf&utm_medium=organic_social&utm_campaign=global-fy22-q2-gatsby_build&utm_content=event)
+
+2. Go to https://one.newrelic.com
+
+3. Select "Api Keys" from the Account Dropdown
+
+4. Your New Relic License Key should be listed here, just click on the settings icon and `Copy Key`
+   ![](./src/images/license_key.png)
+5. Your Account Id should also be listed to the left of this. Save both of these for the configuration.
+
+### Installation
+
+In your Gatsby project, depending on your package manager, run either:
 
 ```
-NEW_RELIC_HOME='./node_modules/gatsby-build-newrelic' gatsby build --open-tracing-config-file ./node_modules/gatsby-build-newrelic/zipkin-local.js --graphql-tracing",
+npm i gatsby-build-newrelic
 ```
 
 or
 
 ```
-export NEW_RELIC_HOME='./node_modules/gatsby-build-newrelic'
+yarn add gatsby-build-newrelic
+```
+### Build Command
+
+Add the following to the `gatsby build` commands in your `package.json`:
+
+```
+gatsby build --open-tracing-config-file ./node_modules/gatsby-build-newrelic/zipkin-local.js --graphql-tracing",
 ```
 
-## Usage
+### Configuration
 In `gatsby-config.js`, add the following code snippet to configure the plugin
 
-```javascript
+```json
     {
       resolve: "gatsby-build-newrelic",
       options: {
@@ -42,23 +58,25 @@ In `gatsby-config.js`, add the following code snippet to configure the plugin
       },
     },
 ```
+#### Required Fields
+ - **NR_LICENSE_KEY** - Your New Relic License Key
+ - **NR_ACCOUNT_ID** - Your New Relic Account Id
+ - **SITE_NAME** - The name you want your app to appear under in New Relic
 
-## Building
-
->[**Optional** - Include this section if users will need to follow specific instructions to build the software from source. Be sure to include any third party build dependencies that need to be installed separately. Remove this section if it's not needed.]
-
-## Testing
-
->[**Optional** - Include instructions on how to run tests if we include tests with the codebase. Remove this section if it's not needed.]
-
+#### Optional Fields
+ - **collectTraces**: *Boolean* - Whether to collect [Trace](https://docs.newrelic.com/docs/distributed-tracing/concepts/introduction-distributed-tracing/) data or not
+   - Default: `true`
+ - **collectLogs**: *Boolean* - Whether to collect [Log](https://docs.newrelic.com/docs/logs/log-management/log-api/log-event-data/) events or not
+   - Default: `true` 
+ - **collectMetrics**: *Boolean* - Whether to collect [Metric](https://docs.newrelic.com/docs/data-apis/convert-to-metrics/analyze-monitor-data-trends-metrics/) data or not
+   - Default: `true` 
+ - **customTags**: *Object* - Optional tags you would like to add to your data as `key:value` pairs. [Read more here!](https://docs.newrelic.com/docs/new-relic-one/use-new-relic-one/core-concepts/use-tags-help-organize-find-your-data/)
 ## Support
 
-New Relic hosts and moderates an online forum where customers can interact with New Relic employees as well as other customers to get help and share best practices. Like all official New Relic open source projects, there's a related Community topic in the New Relic Explorers Hub. You can find this project's topic/threads here:
-
->Add the url for the support thread here
+Please open an issue here in the GitHub Repo if you encounter any issues :D
 
 ## Contributing
-We encourage your contributions to improve [project name]! Keep in mind when you submit your pull request, you'll need to sign the CLA via the click-through using CLA-Assistant. You only have to sign the CLA one time per project.
+We encourage your contributions to improve Gatsby Build New Relic! Keep in mind when you submit your pull request, you'll need to sign the CLA via the click-through using CLA-Assistant. You only have to sign the CLA one time per project.
 If you have any questions, or to execute our corporate CLA, required if your contribution is on behalf of a company,  please drop us an email at opensource@newrelic.com.
 
 **A note about vulnerabilities**
@@ -68,5 +86,4 @@ As noted in our [security policy](../../security/policy), New Relic is committed
 If you believe you have found a security vulnerability in this project or any of New Relic's products or websites, we welcome and greatly appreciate you reporting it to New Relic through [HackerOne](https://hackerone.com/newrelic).
 
 ## License
-[Project Name] is licensed under the [Apache 2.0](http://apache.org/licenses/LICENSE-2.0.txt) License.
->[If applicable: The [project name] also uses source code from third-party libraries. You can find full details on which libraries are used and the terms under which they are licensed in the third-party notices document.]
+Gatsby Build New Relic is licensed under the [Apache 2.0](http://apache.org/licenses/LICENSE-2.0.txt) License.
