@@ -22,15 +22,21 @@ let recorder,
 
 const create = () => {
   const ciAttributes = getCiData();
-  const { staging, NR_INSERT_KEY, customTags = {}, SITE_NAME } = PLUGIN_OPTIONS;
+  const { staging, NR_LICENSE_KEY, customTags = {}, SITE_NAME, euAccount } = PLUGIN_OPTIONS;
+  let endpoint = 'https://trace-api.newrelic.com/trace/v1'
+  if (staging) {
+    endpoint = 'https://staging-trace-api.newrelic.com/trace/v1'
+  } else if (euAccount) {
+
+    endpoint = 'https://trace-api.eu.newrelic.com/trace/v1'
+  }
+  console.log(endpoint)
   logger = new _zipkinTransportHttp.HttpLogger({
-    endpoint: `https://${
-      staging ? `staging-` : ``
-    }trace-api.newrelic.com/trace/v1`,
+    endpoint,
     jsonEncoder: _zipkin.jsonEncoder.JSON_V2,
     httpInterval: 100,
     headers: {
-      "Api-Key": NR_INSERT_KEY,
+      "Api-Key": NR_LICENSE_KEY,
       "Data-Format": "zipkin",
       "Data-Format-Version": 2,
       options: PLUGIN_OPTIONS,
@@ -82,13 +88,13 @@ const formatTrace = (trace) => {
 }
 
 const sendTraceQueue = async (queue) => {
-  const { NR_INSERT_KEY } = PLUGIN_OPTIONS;
+  const { NR_LICENSE_KEY } = PLUGIN_OPTIONS;
   const response = await (0, _nodeFetch.default)(logger.endpoint, {
     method: `POST`,
     body: queue,
     headers: {
       "Content-Type": "application/json",
-      "Api-Key": NR_INSERT_KEY,
+      "Api-Key": NR_LICENSE_KEY,
       "Data-Format": "zipkin",
       "Data-Format-Version": 2,
     },
@@ -108,8 +114,8 @@ const sendTraceQueue = async (queue) => {
 }
 
 const _processQueue = async () => {
-  const { NR_INSERT_KEY, collectTraces = true} = PLUGIN_OPTIONS;
-  if (!NR_INSERT_KEY || !collectTraces || logger.queue.length <= 0) {
+  const { NR_LICENSE_KEY, collectTraces = true} = PLUGIN_OPTIONS;
+  if (!NR_LICENSE_KEY || !collectTraces || logger.queue.length <= 0) {
     return;
   }
   try {

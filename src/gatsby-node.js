@@ -42,7 +42,6 @@ let DELETED_PAGES,
     LOGS_STARTED = false;
 const {
   NR_LICENSE_KEY,
-  NR_INSERT_KEY,
   NR_ACCOUNT_ID,
   staging,
   collectLogs = true,
@@ -418,8 +417,8 @@ class BenchMeta {
       return this.flushing = Promise.resolve();
     }
 
-    if (!NR_INSERT_KEY) {
-      console.log(`[!] gatsby-build-newrelic: NR_INSERT_KEY not set`);
+    if (!NR_LICENSE_KEY) {
+      console.log(`[!] gatsby-build-newrelic: NR_LICENSE_KEY not set`);
       this.flushed = true;
       return this.flushing = Promise.resolve();
     }
@@ -429,7 +428,7 @@ class BenchMeta {
       method: `POST`,
       headers: {
         "content-type": `application/json`,
-        "Api-Key": NR_INSERT_KEY
+        "Api-Key": NR_LICENSE_KEY
       },
       body: json
     });
@@ -473,7 +472,6 @@ process.on(`exit`, () => {
 });
 
 async function onPreInit(api) {
-  !NR_INSERT_KEY && console.info(`[!] gatsby-build-newrelic: NR_INSERT_KEY not set`);
   !NR_LICENSE_KEY && console.info(`[!] gatsby-build-newrelic: NR_LICENSE_KEY not set`);
   !NR_ACCOUNT_ID && console.info(`[!] gatsby-build-newrelic: NR_ACCOUNT_ID not set`);
   !collectTraces && console.info("[!] gatsby-build-newrelic: Not collecting Traces");
