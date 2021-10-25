@@ -9,9 +9,9 @@ let BENCHMARK_REPORTING_URL = 'https://metric-api.newrelic.com/metric/v1'
 
 PLUGIN_OPTIONS.buildId = process.gatsbyTelemetrySessionId || uuidv4();
 PLUGIN_OPTIONS.euAccount = euAccount;
-if (!PLUGIN_OPTIONS.customTags.gatsbySite) {
-  PLUGIN_OPTIONS.customTags.gatsbySite = PLUGIN_OPTIONS.SITE_NAME
-}
+// if (!PLUGIN_OPTIONS.customTags.gatsbySite) {
+//   PLUGIN_OPTIONS.customTags.gatsbySite = PLUGIN_OPTIONS.SITE_NAME
+// }
 
 if (staging) {
   BENCHMARK_REPORTING_URL = 'https://staging-metric-api.newrelic.com/metric/v1'
