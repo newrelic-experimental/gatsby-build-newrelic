@@ -52,7 +52,6 @@ In `gatsby-config.js`, add the following code snippet to configure the plugin
         collectLogs: true, // This will default to true so you can remove
         collectMetrics: true, // This will default to true so you can remove
         customTags: { // Optional tags you would like to add to your data. For more info see https://docs.newrelic.com/docs/new-relic-one/use-new-relic-one/core-concepts/use-tags-help-organize-find-your-data/
-          gatsbySite: 'jankstack',
           newFeature: 'remove-jank',
         }
       },
