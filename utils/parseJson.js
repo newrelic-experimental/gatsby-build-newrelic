@@ -10,9 +10,9 @@ const { staging, euAccount, NR_LICENSE_KEY, NR_ACCOUNT_ID } = PLUGIN_OPTIONS;
 
 const events = []
 
-const getDeepestGroup = (group, label) => {
+const getDeepestGroup = async (group, label) => {
   if (!group.groups) {
-    const ciAttributes = getCiData();
+    const ciAttributes = await getCiData();
     let newEvent = {
       label,
       eventType: "bundleSize",
