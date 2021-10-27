@@ -131,8 +131,9 @@ if (NR_LICENSE_KEY && collectLogs) {
         }
 
         if (copyChunk !== "") {
+          const level = copyChunk.includes(`ERROR`) ? `error` : copyChunk.includes(`WARN`) ? `warn` : `info`;
           winstonLogger.log({
-            level: "info",
+            level,
             message: copyChunk
           });
         }
@@ -478,10 +479,14 @@ process.on(`exit`, () => {
       benchMeta.flush();
     } catch (error) {
       benchMeta.reportError(`[@] gatsby-build-newrelic: error`, new Error(`This is process.exit(); [@] gatsby-build-newrelic: MetricAPI collector has not completely flushed yet`));
-    }
+    } // process.stdout.write = originalStdoutWrite
+    //   ? originalStdoutWrite
+    //   : process.stdout.write;
+    // process.stderr.write = originalStderrWrite
+    //   ? originalStderrWrite
+    //   : process.stderr.write;
 
-    process.stdout.write = originalStdoutWrite ? originalStdoutWrite : process.stdout.write;
-    process.stderr.write = originalStderrWrite ? originalStderrWrite : process.stderr.write;
+
     process.exit(1);
   }
 });

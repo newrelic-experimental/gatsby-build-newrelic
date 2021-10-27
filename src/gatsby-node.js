@@ -123,9 +123,10 @@ if (NR_LICENSE_KEY && collectLogs) {
         }
 
         if (copyChunk !== "") {
+          const level = copyChunk.includes(`ERROR`) ? `error` : copyChunk.includes(`WARN`) ? `warn` : `info`;
           winstonLogger.log({
-            level: "info",
-            message: copyChunk,
+            level,
+            message: copyChunk
           });
         }
       } catch (err) {
@@ -539,12 +540,12 @@ process.on(`exit`, () => {
       );
     }
 
-    process.stdout.write = originalStdoutWrite
-      ? originalStdoutWrite
-      : process.stdout.write;
-    process.stderr.write = originalStderrWrite
-      ? originalStderrWrite
-      : process.stderr.write;
+    // process.stdout.write = originalStdoutWrite
+    //   ? originalStdoutWrite
+    //   : process.stdout.write;
+    // process.stderr.write = originalStderrWrite
+    //   ? originalStderrWrite
+    //   : process.stderr.write;
     process.exit(1);
   }
 });
