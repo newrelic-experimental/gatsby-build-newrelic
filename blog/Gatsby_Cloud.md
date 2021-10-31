@@ -7,6 +7,7 @@ To get more data from the Gatsby build process, the Developer Enablement team cr
 
 Now you can export and analyze metrics, logs, and traces to understand which APIs, plugins, or code changes are affecting build times for your website with the [gatsby-build-newrelic](https://github.com/newrelic-experimental/gatsby-build-newrelic) plugin. The plugin hooks into the internal APIs of the [Gatsby](https://www.gatsbyjs.com/docs/conceptual/overview-of-the-gatsby-build-process/) framework and provides granular build data directly in New Relic so you can debug and optimize your build times. This blog post walks through some best practices for measuring the performance of a large Gatsby site, which you can try out for yourself in a [New Relic forever free account](https://newrelic.com/signup).
 
+## Installing the Plugin
 
 1. Run the following command in the directory containing your Gatsby site:
 ```
@@ -54,3 +55,10 @@ Since we already instrumented our Gatsby site, we can Skip the installation proc
 When you click `See your data` you should be dropped into your new ✨ beautiful ✨ Gatsby Build dashboard
 
 <img width="1614" alt="Screen Shot 2021-10-31 at 3 53 39 PM" src="https://user-images.githubusercontent.com/10321085/139603897-c618a97f-33c6-4d8d-9b8a-ac2f3d11773e.png">
+
+## How New Relic leveraged Observability to pick Gatsby Cloud as its cloud provider
+
+In April, our Developer Enablement team officially opened a [ticket](https://github.com/newrelic/docs-website/issues/1656) to consider migrating our docs site from another provider to [Gatsby Cloud](https://www.gatsbyjs.com/products/cloud/) because build times were slow, and build and deploy times were very unpredictable. Before the team could officially consider moving to Gatsby Cloud, they needed to evaluate the plan.
+
+The Gatsby quickstart can provide essential benchmark measurements so you can determine which cloud provider will give you the optimal, most efficient builds. In addition, it can deploy previews of your website. 
+
