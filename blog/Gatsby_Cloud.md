@@ -53,4 +53,4 @@ Since we already instrumented our Gatsby site, we can Skip the installation proc
 ![Screen Shot 2021-10-27 at 10 12 43 AM](https://user-images.githubusercontent.com/10321085/139114095-07ff5bd3-139d-4455-90b1-19c6d345499e.png)
 When you click `See your data` you should be dropped into your new ✨ beautiful ✨ Gatsby Build dashboard
 
-![image](https://user-images.githubusercontent.com/10321085/139114484-654cf27a-ca8c-4341-a757-5cfa99d50295.png)
+<img width="1614" alt="Screen Shot 2021-10-31 at 3 53 39 PM" src="https://user-images.githubusercontent.com/10321085/139603897-c618a97f-33c6-4d8d-9b8a-ac2f3d11773e.png">
