@@ -1,0 +1,47 @@
+name: Release Feature Branch
+
+on:
+  - workflow_dispatch
+  # push:
+  #   # Sequence of patterns matched against refs/heads
+  #   branches-ignore:
+  #     # Do not push events to branches
+  #     - 'main'
+  #     - 'develop'
+jobs:
+  generate-release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+      - name: get-npm-version
+        id: package-version
+        uses: martinbeentjes/npm-get-version-action@master
+      - name: Setup Node.js
+        uses: actions/setup-node@v1
+        with:
+          node-version: 16
+          registry-url: https://registry.npmjs.org
+
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile
+      - name: Get new version
+        run: |
+          CURRENT_VERSION="${{ steps.package-version.outputs.current-version }}"
+          if [[ ${CURRENT_VERSION} =~ ${GITHUB_REF##*/} ]]
+          then
+              basev="${CURRENT_VERSION%.*}"
+              dotv="${CURRENT_VERSION##*.}"
+              echo "BRANCH_VERSION=${basev}.$((dotv + 1))" >> $GITHUB_ENV
+          else
+              echo "BRANCH_VERSION=${baseversion}-${branch}.1" >> $GITHUB_ENV
+          fi
+      # - name: Version
+      #   run: yarn version --new-version "${{ steps.package-version.outputs.current-version }}${GITHUB_REF##*/}" --no-git-tag-version
+
+      # - name: Publish
+      #   run: yarn publish --access public
+      #   env:
+      #     NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
