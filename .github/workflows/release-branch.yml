@@ -30,13 +30,14 @@ jobs:
       - name: Get new version
         run: |
           CURRENT_VERSION="${{ steps.package-version.outputs.current-version }}"
+          basev="${CURRENT_VERSION%.*}"
           if [[ ${CURRENT_VERSION} =~ ${GITHUB_REF##*/} ]]
           then
-              basev="${CURRENT_VERSION%.*}"
+              
               dotv="${CURRENT_VERSION##*.}"
               echo "BRANCH_VERSION=${basev}.$((dotv + 1))" >> $GITHUB_ENV
           else
-              echo "BRANCH_VERSION=${baseversion}-${branch}.1" >> $GITHUB_ENV
+              echo "BRANCH_VERSION=${basev}-${branch}.1" >> $GITHUB_ENV
           fi
       - name: print stuff
         run: |
