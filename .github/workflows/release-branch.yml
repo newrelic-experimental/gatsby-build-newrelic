@@ -1,13 +1,12 @@
 name: Release Feature Branch
 
 on:
-  - workflow_dispatch
-#   - push:
-#       # Sequence of patterns matched against refs/heads
-#       branches-ignore:
-#         # Do not push events to branches
-#         - 'main'
-#         - 'develop'
+  push:
+    # Sequence of patterns matched against refs/heads
+    branches-ignore:
+      # Do not push events to branches
+      - 'main'
+      - 'develop'
 jobs:
   generate-release:
     runs-on: ubuntu-latest
