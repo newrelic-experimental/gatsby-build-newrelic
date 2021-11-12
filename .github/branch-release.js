@@ -95,10 +95,11 @@ const main = async () => {
     console.log(`ℹ️ Branch ${branchName} is excluded ℹ️`);
     process.exit(0);
   }
-  console.log(branchName);
-  const branchTag = checkBranchTagExists(branchName);
-  console.log(branchTag);
-  const nextBranchVersion = getNextBranchVersion(branchName, branchTag);
+  const formattedBranchName = branchName.replace('/', '-');
+  console.log({formattedBranchName});
+  const branchTag = checkBranchTagExists(formattedBranchName);
+  console.log({branchTag});
+  const nextBranchVersion = getNextBranchVersion(formattedBranchName, branchTag);
   console.log({nextBranchVersion});
   checkNodeVersion();
   yarnInstall();
