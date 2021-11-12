@@ -2,6 +2,7 @@ const { execSync } = require("child_process");
 var pjson = require('../package.json');
 const currentVersion = pjson.version;
 console.log(pjson.version);
+const excludeBranches = ['master', 'develop', 'main'];
 
 const checkNpmToken = () => {
   const npmToken = process.env.NPM_TOKEN;
@@ -90,6 +91,10 @@ const publishYarnVersion = (nextBranchVersion, branchTag) => {
 const main = async () => {
   checkNpmToken();
   const branchName = getBranchName();
+  if (excludeBranches.includes(branchName)) {
+    console.log(`ℹ️ Branch ${branchName} is excluded ℹ️`);
+    process.exit(0);
+  }
   console.log(branchName);
   const branchTag = checkBranchTagExists(branchName);
   console.log(branchTag);
