@@ -30,22 +30,21 @@ jobs:
         run: |
           CURRENT_VERSION="${{ steps.package-version.outputs.current-version }}"
           
-          BRANCH=${GITHUB_REF##*/}
-          VERSION_EXISTS=$(npm view ruairi-test dist-tags.${branch})
-          echo $branch
+          echo "BRANCH=${GITHUB_REF##*/}" >> $GITHUB_ENV
+          VERSION_EXISTS=$(npm view ruairi-test dist-tags.${{ env.BRANCH })
+          echo ${{ env.BRANCH }}
           echo $CURRENT_VERSION
-          echo ${basev}
+          echo $VERSION_EXISTS
+          echo "$(npm view ruairi-test dist-tags.${{ env.BRANCH }})"
           if [[ $VERSION_EXISTS != "" ]]
           then
-              echo "branch"
               BASE_VERSION="${VERSION_EXISTS%.*}"
-              echo $CURRENT_VERSION
+              echo $BASE_VERSION
               dotv="${VERSION_EXISTS##*.}"
-              echo "BRANCH_VERSION=${BASE_VERSION}.$((BASE_VERSION + 1))" >> $GITHUB_ENV
+              echo "BRANCH_VERSION=${BASE_VERSION}.$((dotv + 1))" >> $GITHUB_ENV
           else
               echo "not"
-              echo ${CURRENT_VERSION}
-              echo "BRANCH_VERSION=${CURRENT_VERSION}-${BRANCH}.1" >> $GITHUB_ENV
+              echo "BRANCH_VERSION=${CURRENT_VERSION}-${{ env.BRANCH }}.1" >> $GITHUB_ENV
           fi
       - name: print stuff
         run: |
@@ -54,6 +53,6 @@ jobs:
         run: yarn version --new-version "${{ env.BRANCH_VERSION }}" --no-git-tag-version
 
       - name: Publish
-        run: yarn publish --access public
+        run: yarn publish --access public --tag ${{ env.BRANCH }}
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
