@@ -41,7 +41,7 @@ jobs:
               BASE_VERSION="${VERSION_EXISTS%.*}"
               echo $CURRENT_VERSION
               dotv="${VERSION_EXISTS##*.}"
-              echo "BRANCH_VERSION=${basev}.$((BASE_VERSION + 1))" >> $GITHUB_ENV
+              echo "BRANCH_VERSION=${BASE_VERSION}.$((BASE_VERSION + 1))" >> $GITHUB_ENV
           else
               echo "not"
               echo ${CURRENT_VERSION}
@@ -50,10 +50,10 @@ jobs:
       - name: print stuff
         run: |
           echo ${{ env.BRANCH_VERSION }}
-      # - name: Version
-      #   run: yarn version --new-version "${{ steps.package-version.outputs.current-version }}${GITHUB_REF##*/}" --no-git-tag-version
+      - name: Version
+        run: yarn version --new-version "${{ env.BRANCH_VERSION }}" --no-git-tag-version
 
-      # - name: Publish
-      #   run: yarn publish --access public
-      #   env:
-      #     NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      - name: Publish
+        run: yarn publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
