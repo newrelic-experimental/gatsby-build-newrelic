@@ -1,6 +1,6 @@
 {
   "name": "ruairi-test",
-  "version": "0.0.1",
+  "version": "0.0.1-ru-3.1",
   "description": "[![New Relic Experimental header](https://github.com/newrelic/opensource-website/raw/master/src/images/categories/Experimental.png)](https://opensource.newrelic.com/oss-category/#new-relic-experimental)",
   "main": "index.js",
   "bundleDependencies": false,
