@@ -31,7 +31,7 @@ jobs:
           CURRENT_VERSION="${{ steps.package-version.outputs.current-version }}"
           
           echo "BRANCH=${GITHUB_REF##*/}" >> $GITHUB_ENV
-          VERSION_EXISTS=$(npm view ruairi-test dist-tags.${{ env.BRANCH })
+          VERSION_EXISTS=$(npm view ruairi-test dist-tags.${{ env.BRANCH }})
           echo ${{ env.BRANCH }}
           echo $CURRENT_VERSION
           echo $VERSION_EXISTS
