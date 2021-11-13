@@ -40,25 +40,31 @@ Add the following to the `gatsby build` commands in your `package.json`:
  "gatsby build": "--open-tracing-config-file ./node_modules/gatsby-build-newrelic/zipkin-local.js --graphql-tracing",
 ```
 
+If you are deploying to Gatsby Cloud you will also need to set the following environment variable, either in a `.env` file in your project or in your Gatsby Cloud Site Settings. See [Managing Environment Variables in Gatsby Cloud](https://support.gatsbyjs.com/hc/en-us/articles/360053096753-Managing-Environment-Variables):
+
+```
+GATSBY_OPEN_TRACING_CONFIG_FILE=node_modules/gatsby-build-newrelic/zipkin-local.js
+```
+
 ### Configuration
 
 In `gatsby-config.js`, add the following code snippet to configure the plugin
 
 ```json
-    {
-      resolve: "gatsby-build-newrelic",
-      options: {
-        NR_LICENSE_KEY: "LICENSE KEY", // https://docs.newrelic.com/docs/apis/intro-apis/new-relic-api-keys/#ingest-license-key
-        NR_ACCOUNT_ID: "Account Id",
-        SITE_NAME: "your-website-name",
-        collectTraces: true, // This will default to true so you can remove
-        collectLogs: true, // This will default to true so you can remove
-        collectMetrics: true, // This will default to true so you can remove
-        customTags: { // Optional tags you would like to add to your data. For more info see https://docs.newrelic.com/docs/new-relic-one/use-new-relic-one/core-concepts/use-tags-help-organize-find-your-data/
-          newFeature: 'remove-jank',
-        }
-      },
-    },
+{
+  resolve: "gatsby-build-newrelic",
+  options: {
+    NR_LICENSE_KEY: "LICENSE KEY", // https://docs.newrelic.com/docs/apis/intro-apis/new-relic-api-keys/#ingest-license-key
+    NR_ACCOUNT_ID: "Account Id",
+    SITE_NAME: "your-website-name",
+    collectTraces: true, // This will default to true so you can remove
+    collectLogs: true, // This will default to true so you can remove
+    collectMetrics: true, // This will default to true so you can remove
+    customTags: { // Optional tags you would like to add to your data. For more info see https://docs.newrelic.com/docs/new-relic-one/use-new-relic-one/core-concepts/use-tags-help-organize-find-your-data/
+      newFeature: 'remove-jank',
+    }
+  },
+}
 ```
 
 #### Required Fields
