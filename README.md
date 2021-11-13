@@ -50,7 +50,7 @@ GATSBY_OPEN_TRACING_CONFIG_FILE=node_modules/gatsby-build-newrelic/zipkin-local.
 
 In `gatsby-config.js`, add the following code snippet to configure the plugin
 
-```json
+```js
 {
   resolve: "gatsby-build-newrelic",
   options: {
