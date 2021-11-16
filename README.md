@@ -83,6 +83,10 @@ In `gatsby-config.js`, add the following code snippet to configure the plugin
    - Default: `true`
  - **customTags**: *Object* - Optional tags you would like to add to your data as `key:value` pairs. [Read more here!](https://docs.newrelic.com/docs/new-relic-one/use-new-relic-one/core-concepts/use-tags-help-organize-find-your-data/)
 
+#### New Relic Only Fields
+**staging**: *Boolean* - To report data to a New Relic Staging account
+   - Default: `false`
+  
 ## Support
 
 Please open an issue here in the GitHub Repo if you encounter any issues :D
