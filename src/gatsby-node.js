@@ -389,6 +389,10 @@ class BenchMeta {
         value: external ? external : 0,
       },
     ].map((metric) => ({ ...baseMetric, ...metric }));
+    this.reportInfo(`[@] gatsby-build-newrelic: Metrics`);
+    this.reportInfo(JSON.stringify([{
+      metrics: [...finalMetrics, buildtimes]
+    }]));
     return [
       {
         metrics: [...finalMetrics, buildtimes],
