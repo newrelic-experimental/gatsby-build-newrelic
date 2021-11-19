@@ -18,8 +18,10 @@ if (staging) {
 } else if (euAccount) {
   BENCHMARK_REPORTING_URL = 'https://metric-api.eu.newrelic.com/metric/v1'
 }
+const MAX_ATTRIBUTE_LENGTH=4096;
 
 module.exports = {
   PLUGIN_OPTIONS,
   BENCHMARK_REPORTING_URL,
+  MAX_ATTRIBUTE_LENGTH,
 }

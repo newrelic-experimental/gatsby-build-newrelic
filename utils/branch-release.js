@@ -1,6 +1,6 @@
 const { execSync } = require("child_process");
 var pjson = require("../package.json");
-const currentVersion = pjson.version.find;
+const currentVersion = pjson.version;
 const EXCLUDE_BRANCHES = ["master", "develop", "main"];
 const REQUIRED_NODE_VERSION = 16;
 
@@ -31,7 +31,7 @@ const getBranchName = () => {
  * @returns {String} Either the latest version or ''
  */
 const checkBranchTagExists = (tag) => {
-  return executeCommand(`npm view ruairi-test dist-tags.${tag}`);
+  return executeCommand(`npm view gatsby-build-newrelic dist-tags.${tag}`);
 };
 
 /**
@@ -69,10 +69,12 @@ const getNextBranchVersion = (branchName, branchTagVersion) => {
     console.log({ baseVersion, dotVersion });
     return `${baseVersion}.${dotVersion + 1}`;
   } else {
-    const baseVersion = currentVersion.substring(
-      0,
-      branchTagVersion.lastIndexOf(".")
-    );
+    console.log({ currentVersion });
+    const baseVersion =
+      currentVersion.indexOf("-") !== -1
+        ? currentVersion.substring(0, currentVersion.indexOf("-"))
+        : currentVersion;
+    console.log({ baseVersion });
     console.log(`ℹ️ Branch tag '${branchName}' does not exist yet ℹ️`);
     console.log(`Next Version: ${baseVersion}-${branchName}.1`);
     return `${baseVersion}-${branchName}.1`;

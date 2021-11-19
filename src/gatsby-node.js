@@ -7,6 +7,7 @@ const { cpuCoreCount } = require("gatsby-core-utils");
 const {
   PLUGIN_OPTIONS,
   BENCHMARK_REPORTING_URL,
+  MAX_ATTRIBUTE_LENGTH,
 } = require("gatsby-build-newrelic/utils/constants");
 
 const NewrelicLogs = require("winston-to-newrelic-logs");
@@ -123,10 +124,14 @@ if (NR_LICENSE_KEY && collectLogs) {
         }
 
         if (copyChunk !== "") {
-          const level = copyChunk.includes(`ERROR`) ? `error` : copyChunk.includes(`WARN`) ? `warn` : `info`;
+          const level = copyChunk.includes(`ERROR`)
+            ? `error`
+            : copyChunk.includes(`WARN`)
+            ? `warn`
+            : `info`;
           winstonLogger.log({
             level,
-            message: copyChunk
+            message: copyChunk,
           });
         }
       } catch (err) {
@@ -389,6 +394,22 @@ class BenchMeta {
         value: external ? external : 0,
       },
     ].map((metric) => ({ ...baseMetric, ...metric }));
+
+    finalMetrics.forEach((metric) => {
+      const { attributes } = metric;
+      Object.entries(attributes).forEach(([key, value]) => {
+        if (value && value.length > MAX_ATTRIBUTE_LENGTH) {
+          this.reportInfo(
+            `[@] gatsby-build-newrelic: Reduced length of an attribute that was too long: ${key}:${attributes[key]}`
+          );
+          finalMetric[metric].attributes[key] = value.substring(
+            0,
+            MAX_ATTRIBUTE_LENGTH
+          );
+        }
+      });
+    });
+
     return [
       {
         metrics: [...finalMetrics, buildtimes],
