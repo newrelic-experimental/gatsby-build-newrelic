@@ -366,19 +366,19 @@ class BenchMeta {
     }, {
       name: "memory-external",
       value: external ? external : 0
-    }].map(metric => ({ ...baseMetric,
-      ...metric
-    }));
-    finalMetrics.forEach(metric => {
+    }].map(metric => {
       const {
         attributes
       } = metric;
       Object.entries(attributes).forEach(([key, value]) => {
         if (value && value.length > MAX_ATTRIBUTE_LENGTH) {
           this.reportInfo(`[@] gatsby-build-newrelic: Reduced length of an attribute that was too long: ${key}:${attributes[key]}`);
-          finalMetrics[metric].attributes[key] = value.substring(0, MAX_ATTRIBUTE_LENGTH);
+          metric.attributes[key] = value.substring(0, MAX_ATTRIBUTE_LENGTH);
         }
       });
+      return { ...baseMetric,
+        ...metric
+      };
     });
     return [{
       metrics: [...finalMetrics, buildtimes]
