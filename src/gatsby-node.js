@@ -402,7 +402,7 @@ class BenchMeta {
           this.reportInfo(
             `[@] gatsby-build-newrelic: Reduced length of an attribute that was too long: ${key}:${attributes[key]}`
           );
-          finalMetric[metric].attributes[key] = value.substring(
+          finalMetrics[metric].attributes[key] = value.substring(
             0,
             MAX_ATTRIBUTE_LENGTH
           );
