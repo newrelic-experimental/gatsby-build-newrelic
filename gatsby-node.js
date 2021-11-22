@@ -376,7 +376,7 @@ class BenchMeta {
       Object.entries(attributes).forEach(([key, value]) => {
         if (value && value.length > MAX_ATTRIBUTE_LENGTH) {
           this.reportInfo(`[@] gatsby-build-newrelic: Reduced length of an attribute that was too long: ${key}:${attributes[key]}`);
-          finalMetric[metric].attributes[key] = value.substring(0, MAX_ATTRIBUTE_LENGTH);
+          finalMetrics[metric].attributes[key] = value.substring(0, MAX_ATTRIBUTE_LENGTH);
         }
       });
     });
