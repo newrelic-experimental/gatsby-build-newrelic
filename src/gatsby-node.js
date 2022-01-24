@@ -286,8 +286,7 @@ class BenchMeta {
 
     const webpackVersion = require(`webpack/package.json`).version;
 
-    return {
-      ...ciAttributes,
+    const baseAttributes = { ...ciAttributes,
       ...benchmarkMetadata,
       ...customTags,
       buildId: PLUGIN_OPTIONS.buildId,
@@ -305,8 +304,20 @@ class BenchMeta {
       coreCount: coreCount,
       deletedPages: DELETED_PAGES,
       changedPages: CHANGED_PAGES,
-      clearedCache: CLEARING_CACHE,
+      clearedCache: CLEARING_CACHE
     };
+    Object.entries(baseAttributes).forEach(([key, value]) => {
+      if (value && value.length > MAX_ATTRIBUTE_LENGTH) {
+        this.reportInfo(
+          `[@] gatsby-build-newrelic: Reduced length of an attribute that was too long: ${key}:${baseAttributes[key]}`
+        );
+        baseAttributes[key] = value.substring(
+          0,
+          MAX_ATTRIBUTE_LENGTH
+        );
+      }
+    })
+    return baseAttributes;
   }
 
   getData() {
@@ -393,21 +404,7 @@ class BenchMeta {
         name: "memory-external",
         value: external ? external : 0,
       },
-    ].map((metric) => {
-      const { attributes } = metric;
-      Object.entries(attributes).forEach(([key, value]) => {
-        if (value && value.length > MAX_ATTRIBUTE_LENGTH) {
-          this.reportInfo(
-            `[@] gatsby-build-newrelic: Reduced length of an attribute that was too long: ${key}:${attributes[key]}`
-          );
-          metric.attributes[key] = value.substring(
-            0,
-            MAX_ATTRIBUTE_LENGTH
-          );
-        }
-      })
-      return { ...baseMetric, ...metric };
-    });
+    ].map((metric) => ({ ...baseMetric, ...metric }));
 
     return [
       {
