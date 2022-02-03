@@ -1,6 +1,6 @@
 {
   "name": "gatsby-build-newrelic",
-  "version": "1.1.16",
+  "version": "1.1.17",
   "description": "[![New Relic Experimental header](https://github.com/newrelic/opensource-website/raw/master/src/images/categories/Experimental.png)](https://opensource.newrelic.com/oss-category/#new-relic-experimental)",
   "main": "index.js",
   "bundleDependencies": false,
@@ -12,7 +12,7 @@
     "node-fetch": "^2.6.1",
     "uuid": "3.4.0",
     "winston": "^3.3.3",
-    "winston-to-newrelic-logs": "^1.0.10",
+    "winston-to-newrelic-logs": "^1.0.11",
     "zipkin": "^0.22.0",
     "zipkin-javascript-opentracing": "^3.0.0",
     "zipkin-transport-http": "^0.22.0",
