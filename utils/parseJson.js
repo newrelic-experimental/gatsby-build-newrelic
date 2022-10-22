@@ -4,6 +4,7 @@ const {
 } = require("gatsby-build-newrelic/utils/constants");
 const fs = require(`fs`);
 const path = require('path');
+const pako = require('pako');
 const getCiData = require("./getCiData");
 
 const { staging, euAccount, NR_LICENSE_KEY, NR_ACCOUNT_ID } = PLUGIN_OPTIONS;
@@ -49,11 +50,17 @@ const postEvents = async events => {
     url = `https://insights-collector.eu01.nr-data.net/v1/accounts/${NR_ACCOUNT_ID}/events`;
   }
 
+  const json = JSON.stringify(events, null, 2);
+
   const res = await axios({
     method: 'post',
     url,
-    headers: { 'content-type': 'application/json', "Api-Key": NR_LICENSE_KEY },
-    data: events
+    headers: { 
+      'content-type': 'application/json', 
+      "Api-Key": NR_LICENSE_KEY, 
+      "Content-Encoding": 'gzip' 
+    },
+    data: pako.gzip(json),
   });
   return res;
 }

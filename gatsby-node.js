@@ -33,6 +33,8 @@ const {
 
 const nodeFetch = require(`node-fetch`);
 
+const pako = require(`pako`);
+
 const {
   processFile,
   postEvents,
@@ -452,9 +454,10 @@ class BenchMeta {
       method: `POST`,
       headers: {
         "content-type": `application/json`,
-        "Api-Key": NR_LICENSE_KEY
+        "Api-Key": NR_LICENSE_KEY,
+        "Content-Encoding": `gzip`
       },
-      body: json
+      body: pako.gzip(json)
     });
     const content = await res.text();
 

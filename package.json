@@ -10,6 +10,7 @@
     "gatsby-core-utils": "^2.9.0",
     "gatsby-plugin-webpack-bundle-analyser-v2": "^1.1.25",
     "node-fetch": "^2.6.1",
+    "pako": "^2.0.4",
     "uuid": "3.4.0",
     "winston": "^3.3.3",
     "winston-to-newrelic-logs": "^1.0.11",
